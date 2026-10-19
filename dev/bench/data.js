@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791830737385,
+  "lastUpdate": 1792428954679,
   "repoUrl": "https://github.com/polarsen-io/padwan-ai",
   "entries": {
     "Import Performance": [
@@ -3108,6 +3108,66 @@ window.BENCHMARK_DATA = {
             "value": 237.35,
             "unit": "ms",
             "range": 5.77
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "julien.brayere@obitrain.com",
+            "name": "Julien Brayere",
+            "username": "Andarius"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e161d187a82bcb0e4e5d1a6d2b35fadc41118547",
+          "message": "ci: add Copilot coding agent setup steps (#122)\n\nCopilot ran on bare ubuntu-latest (Python 3.12, no uv) and could not lint, type-check or test.",
+          "timestamp": "2026-10-19T18:54:54+02:00",
+          "tree_id": "d5f85e0c8df028a0abb4783cc21cb39d205d97ef",
+          "url": "https://github.com/polarsen-io/padwan-ai/commit/e161d187a82bcb0e4e5d1a6d2b35fadc41118547"
+        },
+        "date": 1792428953284,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "3.13 · padwan_ai (facade)",
+            "value": 220.95,
+            "unit": "ms",
+            "range": 2.66
+          },
+          {
+            "name": "3.13 · padwan_ai.openai",
+            "value": 223.68,
+            "unit": "ms",
+            "range": 3.02
+          },
+          {
+            "name": "3.13 · padwan_ai.otel",
+            "value": 237.93,
+            "unit": "ms",
+            "range": 1.35
+          },
+          {
+            "name": "3.15 · padwan_ai (facade)",
+            "value": 53.07,
+            "unit": "ms",
+            "range": 0.77
+          },
+          {
+            "name": "3.15 · padwan_ai.openai",
+            "value": 189.25,
+            "unit": "ms",
+            "range": 0.64
+          },
+          {
+            "name": "3.15 · padwan_ai.otel",
+            "value": 227.59,
+            "unit": "ms",
+            "range": 1.85
           }
         ]
       }
