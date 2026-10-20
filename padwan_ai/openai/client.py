@@ -3,11 +3,12 @@ from __future__ import annotations
 import dataclasses
 import os
 import typing
-from collections.abc import AsyncIterator, Callable, Sequence
+from collections.abc import AsyncGenerator, AsyncIterator, Callable, Sequence
 from contextlib import aclosing
 from dataclasses import field
 from functools import partial
 from http import HTTPStatus
+from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, Literal, cast, get_args
 from urllib.parse import urlparse
 
@@ -22,16 +23,20 @@ from .._base import (
     env_api_key,
 )
 from .._json import dumps as _json_dumps, loads as _json_loads
+from ..content import _read_audio
 from ..conversation import ChatMessage
 from ..errors import LLMError, QuotaExceededError, TooManyRequestsError
+from ..logs import log
 from ..models import (
     ChatResponse,
     FinishReason,
+    RequestHeaders,
     ToolCall,
     ToolCallFunction,
     ToolDefinition,
     UsageToken,
 )
+from .audio import Transcription
 from .batch import BatchJob, BatchRequest, BatchResult
 from .tools import OpenAIToolMixin
 from .types import Batch, ListBatchesResponse, OpenAIFile
@@ -157,21 +162,41 @@ def _check_resp_status(resp: niquests.Response) -> niquests.Response:
             data = resp.json()
         except Exception:
             raise e
-        if resp.status_code == HTTPStatus.TOO_MANY_REQUESTS:
-            retry_after = resp.headers.get("retry-after")
-            retry_delay = int(retry_after) if retry_after else 60
-            raise TooManyRequestsError(retry_delay=retry_delay, response=resp)
-        if resp.status_code == HTTPStatus.PAYMENT_REQUIRED:
-            raise QuotaExceededError(body=data)
-        error = data.get("error", "") if isinstance(data, dict) else data
-        if isinstance(error, dict):
-            msg = error.get("message", "")
-        elif isinstance(data, dict) and data.get("message"):
-            # some OpenAI-compatible backends use {"error": "...", "message": "..."}
-            msg = f"{error} — {data['message']}" if error else str(data["message"])
-        else:
-            msg = str(error)
-        raise LLMError("openai", f"{resp.status_code} {msg}", body=data) from e
+        _raise_http_error(resp, data, e)
+
+
+async def _check_stream_status(resp: niquests.AsyncResponse) -> None:
+    """`_check_resp_status` for a response opened with ``stream=True``: its body is read
+    (awaited) only on a failure, to name the error."""
+    try:
+        resp.raise_for_status()
+    except niquests.exceptions.HTTPError as e:
+        try:
+            data = await resp.json()
+        except Exception:
+            raise e
+        _raise_http_error(resp, data, e)
+
+
+def _raise_http_error(
+    resp: niquests.Response, data: typing.Any, cause: niquests.exceptions.HTTPError
+) -> typing.NoReturn:
+    """Raise the padwan error for a failed response whose JSON body is `data`."""
+    if resp.status_code == HTTPStatus.TOO_MANY_REQUESTS:
+        retry_after = resp.headers.get("retry-after")
+        retry_delay = int(retry_after) if retry_after else 60
+        raise TooManyRequestsError(retry_delay=retry_delay, response=resp)
+    if resp.status_code == HTTPStatus.PAYMENT_REQUIRED:
+        raise QuotaExceededError(body=data)
+    error = data.get("error", "") if isinstance(data, dict) else data
+    if isinstance(error, dict):
+        msg = error.get("message", "")
+    elif isinstance(data, dict) and data.get("message"):
+        # some OpenAI-compatible backends use {"error": "...", "message": "..."}
+        msg = f"{error} — {data['message']}" if error else str(data["message"])
+    else:
+        msg = str(error)
+    raise LLMError("openai", f"{resp.status_code} {msg}", body=data) from cause
 
 
 def _check_resp[T](
@@ -276,11 +301,18 @@ class _OpenAIBase(_OpenAIAuth, LLMClientBase[Retry], OpenAIToolMixin):
     async def complete(
         self,
         body: CreateChatCompletionRequest,
+        *,
+        headers: RequestHeaders | None = None,
     ) -> tuple[CreateChatCompletionResponse, UsageToken]:
-        """Fetch structured completion from an OpenAI-compatible endpoint."""
+        """Fetch structured completion from an OpenAI-compatible endpoint.
+
+        ``headers`` are sent with this request only, merged over the session's (a
+        same-named key, ``Authorization`` included, wins).
+        """
         resp = await self.session.post(
             "/chat/completions",
             json=body,
+            headers=dict(headers) if headers else None,
         )
         data: CreateChatCompletionResponse = _check_resp(resp)
 
@@ -304,16 +336,50 @@ class _OpenAIBase(_OpenAIAuth, LLMClientBase[Retry], OpenAIToolMixin):
     async def stream(
         self,
         body: CreateChatCompletionRequest,
+        *,
+        headers: RequestHeaders | None = None,
     ) -> AsyncIterator[CreateChatCompletionStreamResponse]:
-        """Stream chat completions, yielding response chunks as they arrive via SSE."""
+        """Stream chat completions, yielding response chunks as they arrive via SSE.
+
+        ``headers`` are sent with this request only, as in `complete`.
+        """
         resp = await self.session.post(
             self._sse_url("/chat/completions"),
             json={**body, "stream": True},
+            headers=dict(headers) if headers else None,
         )
         _check_resp_status(resp)
         async with aclosing(self._iter_sse(resp, done_sentinel="[DONE]")) as events:
             async for payload in events:
                 yield cast("CreateChatCompletionStreamResponse", payload)
+
+    async def stream_raw(
+        self,
+        body: CreateChatCompletionRequest,
+        *,
+        headers: RequestHeaders | None = None,
+        chunk_size: int = -1,
+    ) -> AsyncGenerator[bytes]:
+        """Stream a chat completion as the provider's raw SSE bytes, for relaying unchanged.
+
+        Errors raise before the first byte; ``chunk_size=-1`` yields bytes as they arrive.
+        """
+        resp = await self.session.post(
+            "/chat/completions",
+            json={**body, "stream": True},
+            headers=dict(headers) if headers else None,
+            stream=True,
+        )
+        try:
+            await _check_stream_status(resp)
+            async for chunk in await resp.iter_content(chunk_size):
+                yield chunk
+        finally:
+            # Aborting an HTTP/2 stream can raise in urllib3-future, as in `_iter_sse`.
+            try:
+                await resp.close()
+            except Exception as e:
+                log.debug("stream_raw close failed: %s", e)
 
     def _prepare_messages(
         self, messages: Sequence[ChatMessage]
@@ -353,8 +419,10 @@ class _OpenAIBase(_OpenAIAuth, LLMClientBase[Retry], OpenAIToolMixin):
         messages: Sequence[ChatMessage],
         tools: Sequence[ToolDefinition] | None = None,
         extra_params: dict[str, typing.Any] | None = None,
+        *,
+        headers: RequestHeaders | None = None,
     ) -> tuple[ChatResponse, UsageToken]:
-        """Send a chat conversation and return the structured response."""
+        """Send a chat conversation and return the structured response; ``headers`` as in `complete`."""
         if not self.model:
             raise LLMError(self.provider, "No model specified")
         body: CreateChatCompletionRequest = {
@@ -366,7 +434,10 @@ class _OpenAIBase(_OpenAIAuth, LLMClientBase[Retry], OpenAIToolMixin):
             body["tools"] = cast(list, self._tools_to_openai(tools))
         if extra_params:
             body.update(cast(typing.Any, extra_params))
-        data, token = await self.complete(body)
+        # Keep the one-arg call so `complete(body)` overrides keep working.
+        data, token = await (
+            self.complete(body, headers=headers) if headers else self.complete(body)
+        )
         choice = data["choices"][0]
         message_dict = cast(dict[str, typing.Any], choice["message"])
         raw_reason = choice.get("finish_reason", "stop")
@@ -392,15 +463,19 @@ class _OpenAIBase(_OpenAIAuth, LLMClientBase[Retry], OpenAIToolMixin):
         messages: Sequence[ChatMessage],
         tools: Sequence[ToolDefinition] | None = None,
         extra_params: dict[str, typing.Any] | None = None,
+        *,
+        headers: RequestHeaders | None = None,
     ) -> OpenAIChatStream:
         """Stream a chat conversation, yielding text chunks.
 
         Usage and tool_calls are available on the returned stream object after iteration.
         The optional ``extra_params`` dict is merged into the request body verbatim,
         so provider-specific fields (e.g. NVIDIA's ``chat_template_kwargs``) can be
-        passed without modifying the client.
+        passed without modifying the client. ``headers`` are as in `complete`.
         """
-        return OpenAIChatStream(self, messages, tools, extra_params=extra_params)
+        return OpenAIChatStream(
+            self, messages, tools, extra_params=extra_params, headers=headers
+        )
 
 
 @dataclasses.dataclass
@@ -411,6 +486,7 @@ class OpenAIChatStream(ChatStream, OpenAIToolMixin):
     messages: Sequence[ChatMessage]
     tools: Sequence[ToolDefinition] | None = None
     extra_params: dict[str, typing.Any] | None = None
+    headers: RequestHeaders | None = None
     usage: UsageToken | None = None
     tool_calls: list[ToolCall] | None = None
     finish_reason: str | None = None
@@ -432,7 +508,12 @@ class OpenAIChatStream(ChatStream, OpenAIToolMixin):
         # Accumulate tool call deltas keyed by index
         pending: dict[int, dict[str, str]] = {}
 
-        async for chunk in self.client.stream(body):
+        chunks = (
+            self.client.stream(body, headers=self.headers)
+            if self.headers
+            else self.client.stream(body)
+        )
+        async for chunk in chunks:
             delta = self._delta(chunk)
             if delta is not None:
                 if self.client.on_thought and (
@@ -502,6 +583,44 @@ class OpenAIChatStream(ChatStream, OpenAIToolMixin):
 @dataclasses.dataclass
 class OpenAIClient(_OpenAIBase):
     """OpenAI API client with chat and batch support."""
+
+    async def transcribe(
+        self,
+        *,
+        file: str | Path | bytes,
+        filename: str | None = None,
+        content_type: str | None = None,
+        model: str = "whisper-1",
+        language: str | None = None,
+        prompt: str | None = None,
+        temperature: float | None = None,
+        headers: RequestHeaders | None = None,
+    ) -> Transcription:
+        """Transcribe audio with ``POST /audio/transcriptions`` (multipart).
+
+        ``file`` is a path or raw bytes. The provider reads the audio format from the
+        file name's extension, so raw bytes need ``filename`` (e.g. ``"note.webm"``).
+        ``prompt`` steers spelling and vocabulary; ``headers`` are sent with this
+        request only, as in `complete`.
+        """
+        if isinstance(file, bytes) and not filename:
+            raise ValueError("filename is required with raw bytes")
+        audio = await _read_audio(file, filename=filename, content_type=content_type)
+        data: list[tuple[str, str]] = [("model", model)]
+        if language is not None:
+            data.append(("language", language))
+        if prompt is not None:
+            data.append(("prompt", prompt))
+        if temperature is not None:
+            data.append(("temperature", str(temperature)))
+        resp = await self.session.post(
+            "/audio/transcriptions",
+            files=[("file", audio)],
+            data=data,
+            headers=dict(headers) if headers else None,
+        )
+        result: Transcription = _check_resp(resp)
+        return result
 
     async def upload_batch_file(
         self,

@@ -81,7 +81,29 @@ async with OpenAIClient(model="text-embedding-3-small") as client:
 
 `padwan_ai.vectors(resp, provider)` returns the vectors in input order for any provider's payload; `provider` defaults to the OpenAI shape, pass `"gemini"` for Gemini. `fetch_embeddings` is available on every OpenAI-compatible client (Mistral, Grok, custom `base_url` endpoints). Pass `model=` to reuse a chat client; provider-only body fields go through `extra_params`. With `extra_params={"encoding_format": "base64"}` (about 4× smaller responses), `vectors()` decodes the float32 payload back to floats.
 
-`complete_chat`/`stream_chat` also accept `extra_params` for provider-only body fields. For raw request bodies, `complete`/`stream` bypass the `ChatMessage` shaping.
+`complete_chat`/`stream_chat` also accept `extra_params` for provider-only body fields. For raw request bodies, `complete`/`stream` bypass the `ChatMessage` shaping. All four take `headers=` for headers sent with that request only (e.g. a gateway's per-user attribution on a client every user shares), on every OpenAI-compatible client; they are merged over the session's, so a same-named key, `Authorization` included, replaces it. `AgentSession` does not forward them.
+
+`stream_raw(body, headers=...)` yields the provider's SSE bytes unparsed (`data:` lines and `[DONE]` included), for a backend that relays them to a client reading the OpenAI wire format, chunk by chunk as they arrive. A compressed response arrives decoded, so a relay must not copy the upstream `Content-Encoding`. The status is checked before the first byte, so an error raises the same exceptions as `stream`; OpenTelemetry instrumentation does not cover it.
+
+## Transcription
+
+`transcribe` posts an audio file to `/audio/transcriptions` and returns `{"text": ...}`
+(the default `json` response format; `verbose_json` timestamps are not exposed). `file=`
+takes a path or raw bytes; the provider reads the format from the file name, so raw bytes
+need `filename`.
+
+```python
+result = await client.transcribe(
+    file=audio_bytes,
+    filename="note.webm",
+    model="whisper-1",
+    language="fr",
+    prompt="Soren, Loxam",  # spelling hints
+)
+print(result["text"])
+```
+
+It also accepts `content_type`, `temperature` and `headers=` (sent with that request only).
 
 ## Batch Processing
 
