@@ -5,6 +5,7 @@ from types import MappingProxyType
 from unittest.mock import AsyncMock, MagicMock, call
 
 import pytest
+from niquests.exceptions import HTTPError
 
 from padwan_ai.errors import LLMError, QuotaExceededError, TooManyRequestsError
 from padwan_ai.openai.batch import BatchJob, BatchResult
@@ -23,20 +24,21 @@ def test_openai_model_literal_includes_stable_drift_addition() -> None:
     assert "gpt-6.1-sol" in OPENAI_MODELS
 
 
+_NOT_JSON = ValueError("not json")
+
+
 @pytest.mark.parametrize(
     "status, json_data, headers, ctx",
     [
         pytest.param(200, {"ok": True}, None, nullcontext(), id="success"),
         pytest.param(
             429,
-            {},
+            _NOT_JSON,
             {"retry-after": "30"},
-            pytest.raises(TooManyRequestsError),
-            id="429-retry",
+            pytest.raises(TooManyRequestsError, check=lambda e: e.retry_delay == 30),
+            id="429-non-json",
         ),
-        pytest.param(
-            429, {}, None, pytest.raises(TooManyRequestsError), id="429-default-60"
-        ),
+        pytest.param(502, _NOT_JSON, None, pytest.raises(HTTPError), id="502-non-json"),
         pytest.param(
             402,
             {"error": "quota"},
@@ -501,21 +503,47 @@ class TestOpenAIStream:
         assert chunks == [chunk]
 
     @pytest.mark.parametrize(
-        "method, status, match",
+        "method, status, body, ctx",
         [
-            pytest.param(OpenAIClient.stream, 200, "SSE extension", id="stream"),
-            pytest.param(OpenAIClient.stream_raw, 500, "boom", id="stream_raw"),
+            pytest.param(
+                OpenAIClient.stream,
+                200,
+                {},
+                pytest.raises(LLMError, match="SSE extension"),
+                id="stream",
+            ),
+            pytest.param(
+                OpenAIClient.stream_raw,
+                500,
+                {"error": {"message": "boom"}},
+                pytest.raises(LLMError, match="boom"),
+                id="stream_raw",
+            ),
+            pytest.param(
+                OpenAIClient.stream_raw,
+                429,
+                ValueError("not json"),
+                pytest.raises(TooManyRequestsError),
+                id="stream_raw-429-non-json",
+            ),
+            pytest.param(
+                OpenAIClient.stream_raw,
+                500,
+                ConnectionError("reset"),
+                pytest.raises(ConnectionError),
+                id="stream_raw-body-read-fails",
+            ),
         ],
     )
     async def test_raises_before_first_chunk(
-        self, client, make_sse_event, make_sse_resp, method, status, match
+        self, client, make_sse_event, make_sse_resp, method, status, body, ctx
     ):
         resp = make_sse_resp([make_sse_event(json.dumps({"choices": []}))], status)
         resp.extension = None
-        resp.json.return_value = {"error": {"message": "boom"}}
+        resp.json.side_effect = [body]
         client.session.post.return_value = resp
         chunks = []
-        with pytest.raises(LLMError, match=match):
+        with ctx:
             async for c in method(client, {"model": "gpt-4o", "messages": []}):
                 chunks.append(c)
         assert chunks == []

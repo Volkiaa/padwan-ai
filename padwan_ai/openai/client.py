@@ -21,6 +21,7 @@ from .._base import (
     LLMClientBase,
     Provider,
     env_api_key,
+    retry_after_delay,
 )
 from .._json import dumps as _json_dumps, loads as _json_loads
 from ..content import _read_audio
@@ -160,8 +161,8 @@ def _check_resp_status(resp: niquests.Response) -> niquests.Response:
     except niquests.exceptions.HTTPError as e:
         try:
             data = resp.json()
-        except Exception:
-            raise e
+        except ValueError:  # not JSON; a read error propagates
+            data = None
         _raise_http_error(resp, data, e)
 
 
@@ -173,19 +174,22 @@ async def _check_stream_status(resp: niquests.AsyncResponse) -> None:
     except niquests.exceptions.HTTPError as e:
         try:
             data = await resp.json()
-        except Exception:
-            raise e
+        except ValueError:  # not JSON; a read error propagates
+            data = None
         _raise_http_error(resp, data, e)
 
 
 def _raise_http_error(
     resp: niquests.Response, data: typing.Any, cause: niquests.exceptions.HTTPError
 ) -> typing.NoReturn:
-    """Raise the padwan error for a failed response whose JSON body is `data`."""
+    """Raise the padwan error for a failed response; `data` is its JSON body, or None if not JSON."""
     if resp.status_code == HTTPStatus.TOO_MANY_REQUESTS:
-        retry_after = resp.headers.get("retry-after")
-        retry_delay = int(retry_after) if retry_after else 60
-        raise TooManyRequestsError(retry_delay=retry_delay, response=resp)
+        raise TooManyRequestsError(
+            retry_delay=retry_after_delay(resp.headers.get("retry-after")),
+            response=resp,
+        ) from cause
+    if data is None:
+        raise cause
     if resp.status_code == HTTPStatus.PAYMENT_REQUIRED:
         raise QuotaExceededError(body=data)
     error = data.get("error", "") if isinstance(data, dict) else data
