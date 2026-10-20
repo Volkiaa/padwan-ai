@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792429097659,
+  "lastUpdate": 1792526159498,
   "repoUrl": "https://github.com/polarsen-io/padwan-ai",
   "entries": {
     "Import Performance": [
@@ -3228,6 +3228,66 @@ window.BENCHMARK_DATA = {
             "value": 222.65,
             "unit": "ms",
             "range": 1.75
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "carlo.abichahine@gmail.com",
+            "name": "Carlo Abi Chahine",
+            "username": "cabichahine"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "7ad8bdd5c07597c840627e96a88c78e6f7c6b9b5",
+          "message": "feat(openai): transcribe audio through /audio/transcriptions (#125)\n\n* feat(openai): headers= on complete() and stream() for one request\n\nA client shared by many users behind a gateway (LiteLLM's x-litellm-end-user-id and\nx-litellm-tags) has to name the user on each request; session headers are fixed when the\nclient opens, and changing them on a shared client races between users.\n\n* fix(openai): forward headers= through complete_chat and stream_chat\n\nType it as a read-only Mapping instead of niquests' HeadersType, and document that\nper-request headers replace same-named session ones.\n\n* feat(openai): stream_raw relays a chat completion's SSE bytes unchanged\n\nA backend in front of a browser that already speaks the OpenAI wire format\nhas nothing to parse: it needs the provider's bytes as they come, with the\nstatus checked before the first one so an error still maps to padwan's\nexceptions.\n\n* fix(openai): stream_raw yields bytes as they arrive and tolerates a failing close\n\nThe 8 KiB default buffered a short completion until it ended; -1 yields each chunk on arrival.\nClose is best-effort as in _iter_sse, since aborting an HTTP/2 stream can raise.\n\n* feat(openai): transcribe audio through /audio/transcriptions\n\nAn OpenAI-compatible gateway serves Whisper on the OpenAI multipart route,\nwith a prompt for spelling hints and a file name that tells the format. The\nMistral transcribe has neither, and names raw bytes \"audio\".\n\n* test(openai): run stream_raw through the existing stream tests\n\nParametrize the stream tests over stream and stream_raw instead of a separate class;\nmake_sse_resp now also serves its events as raw bytes and honours an error status.\n\n* fix(openai): keyword-only transcribe file, read off the event loop, and an e2e test\n\nfile= is keyword-only as in Mistral and is read through content._read_audio; raw bytes\nwithout a filename raise ValueError. Usage is typed, headers use RequestHeaders, and the\nmocked multipart tests give way to an e2e round trip on tests/fixtures/audio.wav.\n\n* test(e2e): commit a synthetic speech clip for the transcribe tests\n\nA 2.3 s, 16 kHz mono wav of \"Two pallets of bricks.\" generated with OpenAI TTS, so the\nOpenAI and Mistral transcribe e2e tests run in CI instead of skipping.\n\n* test(openai): check per-call headers on the chat wrappers and stream_raw only\n\ncomplete_chat and stream_chat forward to complete and stream, so their cases cover both.\n\n* docs(openai): shorten the stream_raw docstring\n\n* refactor(content): _read_audio returns a named file tuple and owns the name and mime overrides\n\ntranscribe passes it straight to niquests; the mime now always follows the name sent.\n\n---------\n\nCo-authored-by: julien <julien.brayere@obitrain.com>",
+          "timestamp": "2026-10-20T21:55:08+02:00",
+          "tree_id": "c28f6d861c9bb6bab135f38c9ce7b20ccc1c8926",
+          "url": "https://github.com/polarsen-io/padwan-ai/commit/7ad8bdd5c07597c840627e96a88c78e6f7c6b9b5"
+        },
+        "date": 1792526158606,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "3.13 · padwan_ai (facade)",
+            "value": 210.2,
+            "unit": "ms",
+            "range": 11.5
+          },
+          {
+            "name": "3.13 · padwan_ai.openai",
+            "value": 211.07,
+            "unit": "ms",
+            "range": 7.88
+          },
+          {
+            "name": "3.13 · padwan_ai.otel",
+            "value": 239.02,
+            "unit": "ms",
+            "range": 15.69
+          },
+          {
+            "name": "3.15 · padwan_ai (facade)",
+            "value": 52.14,
+            "unit": "ms",
+            "range": 3.99
+          },
+          {
+            "name": "3.15 · padwan_ai.openai",
+            "value": 186.16,
+            "unit": "ms",
+            "range": 5.84
+          },
+          {
+            "name": "3.15 · padwan_ai.otel",
+            "value": 220.69,
+            "unit": "ms",
+            "range": 12.31
           }
         ]
       }
