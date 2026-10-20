@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792529076240,
+  "lastUpdate": 1792533299658,
   "repoUrl": "https://github.com/polarsen-io/padwan-ai",
   "entries": {
     "Import Performance": [
@@ -3408,6 +3408,66 @@ window.BENCHMARK_DATA = {
             "value": 218.11,
             "unit": "ms",
             "range": 6.9
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "julien.brayere@obitrain.com",
+            "name": "Julien Brayere",
+            "username": "Andarius"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "56709111d0ce46d840484d5fb2db992978976f9e",
+          "message": "ci: skip the research group when installing test dependencies (#128)\n\njupyter and pandas are unused by the suite; on a cold 3.15 cache pandas builds from source.",
+          "timestamp": "2026-10-20T23:54:07+02:00",
+          "tree_id": "bc669e635f12a6debdcedbab5135e31766dfd0e3",
+          "url": "https://github.com/polarsen-io/padwan-ai/commit/56709111d0ce46d840484d5fb2db992978976f9e"
+        },
+        "date": 1792533298544,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "3.13 · padwan_ai (facade)",
+            "value": 228,
+            "unit": "ms",
+            "range": 11.18
+          },
+          {
+            "name": "3.13 · padwan_ai.openai",
+            "value": 223.52,
+            "unit": "ms",
+            "range": 1.45
+          },
+          {
+            "name": "3.13 · padwan_ai.otel",
+            "value": 239.69,
+            "unit": "ms",
+            "range": 4.81
+          },
+          {
+            "name": "3.15 · padwan_ai (facade)",
+            "value": 53.57,
+            "unit": "ms",
+            "range": 2.67
+          },
+          {
+            "name": "3.15 · padwan_ai.openai",
+            "value": 191.49,
+            "unit": "ms",
+            "range": 4.59
+          },
+          {
+            "name": "3.15 · padwan_ai.otel",
+            "value": 234.64,
+            "unit": "ms",
+            "range": 6.58
           }
         ]
       }
