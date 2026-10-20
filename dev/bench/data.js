@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792526159498,
+  "lastUpdate": 1792528519412,
   "repoUrl": "https://github.com/polarsen-io/padwan-ai",
   "entries": {
     "Import Performance": [
@@ -3288,6 +3288,66 @@ window.BENCHMARK_DATA = {
             "value": 220.69,
             "unit": "ms",
             "range": 12.31
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "carlo.abichahine@gmail.com",
+            "name": "Carlo Abi Chahine",
+            "username": "cabichahine"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "459a096689d4678f4e80fff5def1703629d60e6b",
+          "message": "fix(openai): a 429 maps to TooManyRequestsError whatever its body and Retry-After (#126)\n\n* fix(openai): a 429 maps to TooManyRequestsError whatever its body and Retry-After\n\nA gateway's 429 can carry a plain-text body, which escaped as a bare\nHTTPError, and Retry-After may be an HTTP date, which crashed int(). The\ndelay is now parsed as urllib3 parses it, 60 s when unreadable.\n\n* fix(openai): share Retry-After parsing with typesafe and wait at least 1s\n\nretry_after_delay in _base replaces the two copies; a past HTTP date no longer gives a\nzero delay. The 429 tests fold into test_check_resp and cover a non-JSON 429 on stream_raw.\n\n* fix(openai): fall back to the HTTP error only when the error body is not JSON\n\nA failure reading the body now propagates instead of being reported as the HTTP status.\n\n* test: test Retry-After parsing once, through typesafe\n\nThe OpenAI table keeps only its own paths: a non-JSON 429 and a non-JSON 502.\n\n* docs(openai): one-line _raise_http_error docstring\n\n* refactor: name the 60s fallback as DEFAULT_RETRY_DELAY\n\n---------\n\nCo-authored-by: julien <julien.brayere@obitrain.com>",
+          "timestamp": "2026-10-20T22:34:30+02:00",
+          "tree_id": "c71b3435aa5dbb58780f335ae8cfd2ee156ff84d",
+          "url": "https://github.com/polarsen-io/padwan-ai/commit/459a096689d4678f4e80fff5def1703629d60e6b"
+        },
+        "date": 1792528518558,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "3.13 · padwan_ai (facade)",
+            "value": 207.51,
+            "unit": "ms",
+            "range": 1.07
+          },
+          {
+            "name": "3.13 · padwan_ai.openai",
+            "value": 206.84,
+            "unit": "ms",
+            "range": 1.06
+          },
+          {
+            "name": "3.13 · padwan_ai.otel",
+            "value": 221.32,
+            "unit": "ms",
+            "range": 1.28
+          },
+          {
+            "name": "3.15 · padwan_ai (facade)",
+            "value": 51.28,
+            "unit": "ms",
+            "range": 0.22
+          },
+          {
+            "name": "3.15 · padwan_ai.openai",
+            "value": 183.19,
+            "unit": "ms",
+            "range": 12.76
+          },
+          {
+            "name": "3.15 · padwan_ai.otel",
+            "value": 220.8,
+            "unit": "ms",
+            "range": 5.61
           }
         ]
       }
