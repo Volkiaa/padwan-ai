@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792528519412,
+  "lastUpdate": 1792529076240,
   "repoUrl": "https://github.com/polarsen-io/padwan-ai",
   "entries": {
     "Import Performance": [
@@ -3348,6 +3348,66 @@ window.BENCHMARK_DATA = {
             "value": 220.8,
             "unit": "ms",
             "range": 5.61
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "julien.brayere@obitrain.com",
+            "name": "Julien Brayere",
+            "username": "Andarius"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1de693f82f13cd80df37f45d467aa0721a05e09e",
+          "message": "chore(release): release 0.15.0 (#127)",
+          "timestamp": "2026-10-20T22:43:36+02:00",
+          "tree_id": "e17b39c27bee2eda149682dfd268f672639992c5",
+          "url": "https://github.com/polarsen-io/padwan-ai/commit/1de693f82f13cd80df37f45d467aa0721a05e09e"
+        },
+        "date": 1792529075072,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "3.13 · padwan_ai (facade)",
+            "value": 220.45,
+            "unit": "ms",
+            "range": 4.48
+          },
+          {
+            "name": "3.13 · padwan_ai.openai",
+            "value": 217.01,
+            "unit": "ms",
+            "range": 2.71
+          },
+          {
+            "name": "3.13 · padwan_ai.otel",
+            "value": 239.84,
+            "unit": "ms",
+            "range": 7.56
+          },
+          {
+            "name": "3.15 · padwan_ai (facade)",
+            "value": 51.82,
+            "unit": "ms",
+            "range": 1.56
+          },
+          {
+            "name": "3.15 · padwan_ai.openai",
+            "value": 179.73,
+            "unit": "ms",
+            "range": 2.95
+          },
+          {
+            "name": "3.15 · padwan_ai.otel",
+            "value": 218.11,
+            "unit": "ms",
+            "range": 6.9
           }
         ]
       }
