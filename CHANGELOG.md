@@ -1,3 +1,18 @@
+## 0.15.0 (2026-10-20)
+
+OpenAI gains speech-to-text, a raw SSE relay for chat completions and per-request headers; a 429 now always maps to `TooManyRequestsError`.
+
+### Features
+
+- **OpenAI transcription**: `OpenAIClient.transcribe(file=..., filename=..., model="whisper-1", language=..., prompt=..., temperature=...)` posts to `/audio/transcriptions` and returns a typed `Transcription` (text, token or duration usage). `file=` takes a path or raw bytes; raw bytes need `filename`, since the provider reads the format from its extension. Files are read off the event loop.
+- **`stream_raw`** yields a chat completion's SSE bytes unparsed (`data:` lines and `[DONE]` included), for a backend relaying them to a client that reads the OpenAI wire format. Errors raise before the first byte, as in `stream`.
+- **Per-request headers**: `complete`, `stream`, `complete_chat`, `stream_chat`, `stream_raw` and `transcribe` take `headers=`, sent with that request only (e.g. a LiteLLM end-user id). `RequestHeaders` is exported for typing them.
+- **Models** from the weekly SDK refresh: `claude-haiku-5-5`, `gemini-4-argon`, `gemini-nano-banana-2.1`, `mistral-large-4`.
+
+### Fixes
+
+- **OpenAI 429 mapping**: a 429 raises `TooManyRequestsError` even when its body is not JSON, and `Retry-After` is read as seconds or an HTTP date. OpenAI and TypeSafe share the parsing: at least 1 s, and `DEFAULT_RETRY_DELAY` (60 s) when the header is absent or unreadable. A non-JSON body on another status still raises the `HTTPError`.
+
 ## 0.14.1 (2026-10-08)
 
 Three fixes on the Anthropic ↔ OpenAI bridge that padwan-proxy serves to Claude Code: cached tokens were counted twice, parallel tool results carrying images produced a message order backends reject, and content capture crashed on Mistral's structured output.
