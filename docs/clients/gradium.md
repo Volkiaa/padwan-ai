@@ -19,8 +19,8 @@ Set `GRADIUM_API_KEY` in your environment or pass `api_key=` explicitly. `base_u
 `https://api.gradium.ai/api/`; use `https://eu.api.gradium.ai/api/` or `https://us.api.gradium.ai/api/` for data
 residency.
 
-Requests retry up to three times on connection errors, HTTP 502, 503 and 504 (Gradium reports its own failures as 500,
-which is not retried). A rate limit (429) raises `TooManyRequestsError`; other API errors, including errors streamed
+Requests retry up to three times on connection errors; GET, PUT and DELETE also on HTTP 502, 503 and 504 (Gradium
+reports its own failures as 500, which is not retried, and a POST is billed or creates a voice, so it is never resent). A rate limit (429) raises `TooManyRequestsError`; other API errors, including errors streamed
 after a successful transcription response started, raise `LLMError` with `provider="gradium"`. Bad arguments (no voice,
 unknown audio extension) raise `ValueError`.
 
@@ -119,7 +119,8 @@ async with GradiumRealtimeSTTClient(language="en") as stt:
             ...  # the speaker has likely finished their turn
 ```
 
-To drive the socket yourself, call `send_audio(chunk)`, `flush()` and `end_input()` and iterate the connection.
+To drive the socket yourself, call `append_audio(chunk)`, `flush()` and `end_input()` and iterate the connection;
+`stream()` ends the input, so a connection streams once.
 
 ## Speech-to-speech (WebSocket)
 

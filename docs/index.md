@@ -34,7 +34,7 @@ Most LLM client libraries pull in heavy dependencies (pydantic, httpx) and lock 
 | Grok     | ✅   | ✅        | ✅    | ✅       | ➖            | ❌  | ➖         |
 | Anthropic | ✅  | ✅        | ❌    | ➖       | ➖            | ➖  | ➖         |
 | [Voyage AI](clients/voyage.md) | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ✅ |
-| [ElevenLabs (experimental)](clients/elevenlabs.md) | ➖ | ➖ | ➖ | ❌ | ✅ | ✅ | ➖ |
+| [ElevenLabs (experimental)](clients/elevenlabs.md) | ➖ | ➖ | ➖ | ✅ | ✅ | ✅ | ➖ |
 | [Gradium (experimental)](clients/gradium.md) | ➖ | ➖ | ➖ | ✅ | ✅ | ✅ | ➖ |
 | [OpenAI-Compatible](clients/openai-compatible.md) | ✅ | ✅ | ➕ | ➕ | ➕ | ❌ | ➕ |
 

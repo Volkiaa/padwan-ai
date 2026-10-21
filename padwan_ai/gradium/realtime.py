@@ -13,10 +13,8 @@ from contextlib import aclosing, asynccontextmanager
 from dataclasses import dataclass, field
 from typing import Any, ClassVar, Literal, NotRequired, TypedDict
 
-import niquests
-
-from .._base import RealtimeClientBase, env_api_key
-from .._ws import WsConnection
+from .._base import ApiKeyWsAuth, RealtimeClientBase
+from .._ws import WsConnection, aiter_items
 from ..errors import LLMError, Provider
 from .client import (
     GradiumLanguage,
@@ -112,7 +110,7 @@ async def _word_chunks(
 ) -> AsyncIterator[str]:
     """Regroup tokens on whitespace: the server joins consecutive text messages with a space."""
     if not isinstance(texts, AsyncIterable):
-        texts = _aiter(texts)
+        texts = aiter_items(texts)
     buffer = ""
     async for text in texts:
         buffer += text
@@ -124,22 +122,10 @@ async def _word_chunks(
         yield tail
 
 
-async def _aiter[T](items: Iterable[T]) -> AsyncIterator[T]:
-    for item in items:
-        yield item
-
-
-class _GradiumWsAuth:
-    """Plain mixin, so `_api_key` stays the base dataclass's init=False field."""
-
+class _GradiumWsAuth(ApiKeyWsAuth):
     provider: ClassVar[Provider] = "gradium"
-    _api_key: str
-
-    def _get_default_api_key(self) -> str:
-        return env_api_key(self.provider, "GRADIUM_API_KEY")
-
-    def _set_auth_headers(self, session: niquests.AsyncSession) -> None:
-        session.headers["x-api-key"] = self._api_key
+    api_key_env: ClassVar[str] = "GRADIUM_API_KEY"
+    api_key_header: ClassVar[str] = "x-api-key"
 
 
 @dataclass
@@ -187,7 +173,7 @@ class _GradiumConnection(WsConnection):
         """Send `inputs`, then `end_of_stream`, while yielding messages until the server's `end_of_stream`."""
 
         async def send_all() -> None:
-            items = inputs if isinstance(inputs, AsyncIterable) else _aiter(inputs)
+            items = inputs if isinstance(inputs, AsyncIterable) else aiter_items(inputs)
             async for item in items:
                 await send(item)
             await self.end_input()
@@ -218,7 +204,7 @@ class GradiumTTSConnection(_GradiumConnection):
 
 @dataclass
 class _AudioInputConnection(_GradiumConnection):
-    async def send_audio(self, audio: bytes) -> None:
+    async def append_audio(self, audio: bytes) -> None:
         """Stream an audio chunk in the client's `input_format` (80 ms chunks are recommended)."""
         payload: _AudioMessage = {
             "type": "audio",
@@ -229,8 +215,8 @@ class _AudioInputConnection(_GradiumConnection):
     async def stream(
         self, chunks: AsyncIterable[bytes] | Iterable[bytes]
     ) -> AsyncGenerator[dict[str, Any]]:
-        """Send audio `chunks` while yielding server messages until `end_of_stream`."""
-        async with aclosing(self._pump(chunks, self.send_audio)) as messages:
+        """Send audio `chunks` while yielding server messages until `end_of_stream` (once per connection)."""
+        async with aclosing(self._pump(chunks, self.append_audio)) as messages:
             async for message in messages:
                 yield message
 
@@ -256,21 +242,17 @@ async def _handshake[C: _GradiumConnection](
     setup: Mapping[str, Any],
     conn_type: type[C],
 ) -> C:
-    """Upgrade to a WebSocket, send `setup` and wait for `ready`."""
-    resp = await client.session.get(f"{client.base_url}{route}", timeout=client.timeout)
-    if resp.extension is None:
-        raise LLMError(
-            "gradium",
-            f"handshake did not upgrade to a websocket (status {resp.status_code})",
-        )
-    conn = conn_type(resp.extension)
+    """Upgrade to a WebSocket, send `setup` and wait for `ready` (within the client's timeout)."""
+    conn = conn_type(await client._open_ws(f"{client.base_url}{route}"))
     try:
         await conn.send_event(setup)
-        async for message in conn:
-            if message.get("type") == "ready":
-                conn.ready = message
-                return conn
-        raise LLMError("gradium", "stream closed before ready")
+        conn.ready = await conn.wait_for(
+            lambda m: m.get("type") == "ready",
+            timeout=client.timeout,
+            provider="gradium",
+            what="ready",
+        )
+        return conn
     except BaseException:
         await conn.close()
         raise

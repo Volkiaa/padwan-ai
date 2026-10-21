@@ -71,6 +71,7 @@ async def test_realtime_s2s():
     assert "renard" in " ".join(texts).lower()
 
 
+@pytest.mark.paid
 async def test_voices():
     async with GradiumClient(voice_id=VOICE_ID) as client:
         catalog = await client.list_voices(include_catalog=True)

@@ -4,15 +4,15 @@ from collections.abc import AsyncGenerator
 from dataclasses import field
 from functools import partial
 from pathlib import Path
-from typing import Any, ClassVar, Literal, NoReturn, NotRequired, TypedDict, cast
+from typing import Any, ClassVar, Literal, NotRequired, TypedDict, cast
 
 import niquests
 from niquests.typing import MultiPartFilesType
 from urllib3.util.retry import Retry
 
-from .._base import StandaloneClientMixin, env_api_key
+from .._base import StandaloneClientMixin, env_api_key, standalone_retry
 from ..content import _read_audio
-from ..errors import LLMError, Provider, _error_message
+from ..errors import LLMError, Provider
 
 GradiumOutputFormat = Literal[
     "wav",
@@ -94,7 +94,8 @@ class _SpeechBody(TypedDict):
     output_format: GradiumOutputFormat
     only_audio: bool
     model_name: str
-    json_config: NotRequired[GradiumTTSConfig]
+    json_config: NotRequired[str]
+    """`GradiumTTSConfig` serialized: the API takes this field as a JSON string."""
 
 
 class _VoiceUpdate(TypedDict, total=False):
@@ -145,60 +146,29 @@ class GradiumSpeech:
     mime_type: str
 
 
-def _raise_error(
-    resp: niquests.Response | niquests.AsyncResponse,
-    data: Any,
-    text: str,
-    error: Exception,
-) -> NoReturn:
-    body = data if isinstance(data, dict) else None
-    message = _error_message(data) or text.strip()
-    raise LLMError(
-        "gradium", f"{resp.status_code} {message}".rstrip(), cause=error, body=body
-    ) from error
-
-
-def _check_resp_status(resp: niquests.Response) -> niquests.Response:
-    """Raise `LLMError` on non-2xx; bodies are JSON `{"detail": ...}` or plain text."""
-    try:
-        return resp.raise_for_status()
-    except niquests.exceptions.HTTPError as error:
-        try:
-            data: Any = resp.json()
-        except Exception:
-            data = None
-        _raise_error(resp, data, resp.text or "", error)
-
-
-async def _check_stream_status(resp: niquests.AsyncResponse) -> niquests.AsyncResponse:
-    """`_check_resp_status` for `stream=True` responses, whose body must be awaited."""
-    try:
-        return resp.raise_for_status()
-    except niquests.exceptions.HTTPError as error:
-        text = (await resp.content or b"").decode("utf-8", errors="replace")
-        try:
-            data: Any = json.loads(text)
-        except ValueError:
-            data = None
-        _raise_error(resp, data, text, error)
-
-
 def _parse_transcription(body: str) -> GradiumTranscription:
     """Fold the NDJSON stream into segments; `end_text` closes the latest `text`."""
     segments: list[GradiumSegment] = []
     for line in body.splitlines():
         if not line.strip():
             continue
-        msg = json.loads(line)
-        match msg.get("type"):
-            case "text":
-                segments.append(
-                    {"text": msg["text"], "start": msg["start_s"], "end": None}
-                )
-            case "end_text" if segments:
-                segments[-1]["end"] = msg["stop_s"]
-            case "error":
-                raise LLMError("gradium", msg.get("message", "transcription failed"))
+        try:
+            msg = json.loads(line)
+            match msg.get("type"):
+                case "text":
+                    segments.append(
+                        {"text": msg["text"], "start": msg["start_s"], "end": None}
+                    )
+                case "end_text" if segments:
+                    segments[-1]["end"] = msg["stop_s"]
+                case "error":
+                    raise LLMError(
+                        "gradium", msg.get("message", "transcription failed")
+                    )
+        except (ValueError, KeyError, AttributeError) as error:
+            raise LLMError(
+                "gradium", f"Malformed transcription line: {line!r}", cause=error
+            ) from error
     return {"text": " ".join(s["text"] for s in segments), "segments": segments}
 
 
@@ -218,15 +188,11 @@ class GradiumClient(StandaloneClientMixin):
     api_key: str | None = field(default=None, repr=False)
     base_url: str = GRADIUM_ENDPOINT
     # no 500: the docs say pre-stream auth and input errors use it too
+    # Failures are plain-text 500s (not retried); POSTs bill or create voices, so only
+    # connection errors are retried for them.
     _retry: Retry = field(
         default_factory=partial(
-            Retry,
-            total=3,
-            backoff_factor=0.5,
-            status_forcelist=[429, 502, 503, 504],
-            allowed_methods=["GET", "POST", "PUT", "DELETE"],
-            respect_retry_after_header=True,
-            raise_on_status=False,
+            standalone_retry, (502, 503, 504), ("GET", "PUT", "DELETE")
         ),
         repr=False,
     )
@@ -260,7 +226,7 @@ class GradiumClient(StandaloneClientMixin):
             "model_name": model,
         }
         if config:
-            body["json_config"] = config
+            body["json_config"] = json.dumps(config)
         return body
 
     async def generate_speech(
@@ -272,9 +238,15 @@ class GradiumClient(StandaloneClientMixin):
         output_format: GradiumOutputFormat = "wav",
         config: GradiumTTSConfig | None = None,
     ) -> GradiumSpeech:
-        """Synthesize `text` with `voice_id` (else the client's default); `model="default"` is the latest."""
+        """Synthesize `text` with `voice_id` (else the client's default); `model="default"` is the latest.
+
+        The audio is requested whole (`only_audio`), so a failure after the response
+        started comes back as truncated audio, not an error.
+        """
         body = self._speech_body(text, voice_id, model, output_format, config)
-        resp = _check_resp_status(await self.session.post("post/speech/tts", json=body))
+        resp = self._check_resp_status(
+            await self.session.post("post/speech/tts", json=body)
+        )
         return GradiumSpeech(
             audio=resp.content or b"",
             mime_type=resp.headers.get("content-type", "application/octet-stream"),
@@ -294,7 +266,7 @@ class GradiumClient(StandaloneClientMixin):
         body = self._speech_body(text, voice_id, model, output_format, config)
         resp = await self.session.post("post/speech/tts", json=body, stream=True)
         try:
-            resp = await _check_stream_status(resp)
+            resp = await self._check_stream_status(resp)
             async for chunk in await resp.iter_content(chunk_size):
                 yield bytes(chunk)
         finally:
@@ -304,12 +276,12 @@ class GradiumClient(StandaloneClientMixin):
         """Custom voices of the organization, plus the shared catalog with `include_catalog`."""
         # limit=0 lifts the API's default page size of 100, as the SDK does
         params = {"limit": "0", "include_catalog": str(include_catalog).lower()}
-        resp = _check_resp_status(await self.session.get("voices/", params=params))
+        resp = self._check_resp_status(await self.session.get("voices/", params=params))
         voices: list[GradiumVoice] = resp.json()
         return voices
 
     async def get_voice(self, voice_id: str) -> GradiumVoice:
-        resp = _check_resp_status(await self.session.get(f"voices/{voice_id}"))
+        resp = self._check_resp_status(await self.session.get(f"voices/{voice_id}"))
         voice: GradiumVoice = resp.json()
         return voice
 
@@ -345,7 +317,7 @@ class GradiumClient(StandaloneClientMixin):
         resp = await self.session.post(
             "voices/", files=cast("MultiPartFilesType", parts)
         )
-        created: dict[str, Any] = _check_resp_status(resp).json()
+        created: dict[str, Any] = self._check_resp_status(resp).json()
         if not (uid := created.get("uid")):
             raise LLMError(
                 "gradium", created.get("error") or "voice creation failed", body=created
@@ -373,19 +345,19 @@ class GradiumClient(StandaloneClientMixin):
             body["start_s"] = start_s
         if not body:
             raise ValueError("update_voice needs at least one field to change")
-        resp = _check_resp_status(
+        resp = self._check_resp_status(
             await self.session.put(f"voices/{voice_id}", json=body)
         )
         voice: GradiumVoice = resp.json()
         return voice
 
     async def delete_voice(self, voice_id: str) -> None:
-        _check_resp_status(await self.session.delete(f"voices/{voice_id}"))
+        self._check_resp_status(await self.session.delete(f"voices/{voice_id}"))
 
     async def transcribe(
         self,
-        file: str | Path | bytes,
         *,
+        file: str | Path | bytes,
         language: GradiumLanguage = "any",
         model: str = "default",
         input_format: GradiumInputFormat | None = None,
@@ -414,4 +386,4 @@ class GradiumClient(StandaloneClientMixin):
             params=params,
             headers={"Content-Type": _INPUT_CONTENT_TYPES[fmt]},
         )
-        return _parse_transcription(_check_resp_status(resp).text or "")
+        return _parse_transcription(self._check_resp_status(resp).text or "")

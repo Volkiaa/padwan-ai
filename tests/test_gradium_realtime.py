@@ -147,7 +147,7 @@ async def test_connect_setup(client, route, setup):
         assert conn.ready == {"type": "ready", "request_id": "r1"}
 
     client._session.get.assert_awaited_once_with(
-        f"wss://api.gradium.ai/api/{route}", timeout=30.0
+        f"wss://api.gradium.ai/api/{route}", params=None, timeout=30.0
     )
     assert [json.loads(m) for m in ext.sent] == [setup]
     assert ext.closed
