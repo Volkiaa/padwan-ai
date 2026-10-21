@@ -391,12 +391,12 @@ class RealtimeClientBase[ConnT](abc.ABC):
         ...
 
 
-def standalone_retry() -> Retry:
-    """Retry connection errors and 5xx on GET/POST, honouring ``Retry-After``; 429 surfaces as an error."""
+def standalone_retry(statuses: Sequence[int] = (500, 502, 503, 504)) -> Retry:
+    """Retry connection errors and ``statuses`` on GET/POST, honouring ``Retry-After``; 429 surfaces as an error."""
     return Retry(
         total=3,
         backoff_factor=0.5,
-        status_forcelist=[500, 502, 503, 504],
+        status_forcelist=list(statuses),
         allowed_methods=["GET", "POST"],
         respect_retry_after_header=True,
         raise_on_status=False,
@@ -432,7 +432,7 @@ class StandaloneClientMixin:
             except Exception:
                 data = None
             body = data if isinstance(data, dict) else None
-            message = _error_message(data)
+            message = _error_message(data) or (resp.text or "").strip()
             if resp.status_code == 429:
                 raise TooManyRequestsError(
                     retry_delay=retry_after_delay(resp.headers.get("retry-after")),

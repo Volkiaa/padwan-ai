@@ -7,7 +7,7 @@ import pytest
 from gradium.speech import TTSSetup
 
 from padwan_ai import GradiumClient
-from padwan_ai.errors import LLMError
+from padwan_ai.errors import LLMError, TooManyRequestsError
 from padwan_ai.gradium import GradiumSpeech
 from padwan_ai.gradium.client import _SpeechBody
 
@@ -60,7 +60,7 @@ def _client(resp: MagicMock, **kwargs) -> tuple[GradiumClient, AsyncMock]:
                 "output_format": "pcm_24000",
                 "only_audio": True,
                 "model_name": "tts-2",
-                "json_config": {"temp": 0.0, "padding_bonus": -1},
+                "json_config": '{"temp": 0.0, "padding_bonus": -1}',
             },
             nullcontext(),
             id="overrides",
@@ -130,7 +130,7 @@ async def test_transcribe(
         file.write_bytes(b"AUDIO")
 
     with ctx:
-        result = await client.transcribe(file, **kwargs)
+        result = await client.transcribe(file=file, **kwargs)
         assert result == {
             "text": "Hello world",
             "segments": [
@@ -168,6 +168,21 @@ async def test_transcribe(
             r"\[gradium\] worker crashed",
             id="in-stream-error",
         ),
+        pytest.param(
+            200,
+            '{"type": "text", "text": "Hi"}',
+            r"\[gradium\] Malformed transcription line",
+            id="missing-key",
+        ),
+        pytest.param(
+            200, "not json", r"\[gradium\] Malformed transcription line", id="not-json"
+        ),
+        pytest.param(
+            429,
+            "slow down",
+            None,
+            id="rate-limit",
+        ),
     ],
 )
 async def test_transcribe_errors(status, text, match, make_resp):
@@ -177,8 +192,9 @@ async def test_transcribe_errors(status, text, match, make_resp):
         resp.text = text
     client, _ = _client(resp)
 
-    with pytest.raises(LLMError, match=match):
-        await client.transcribe(b"AUDIO")
+    error = TooManyRequestsError if match is None else LLMError
+    with pytest.raises(error, match=match):
+        await client.transcribe(file=b"AUDIO")
 
 
 @pytest.mark.parametrize(

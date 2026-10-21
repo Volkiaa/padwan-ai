@@ -3,14 +3,14 @@ import json
 from dataclasses import field
 from functools import partial
 from pathlib import Path
-from typing import Any, ClassVar, Literal, NotRequired, TypedDict
+from typing import ClassVar, Literal, NotRequired, TypedDict
 
 import niquests
 from urllib3.util.retry import Retry
 
-from .._base import StandaloneClientMixin, env_api_key
+from .._base import StandaloneClientMixin, env_api_key, standalone_retry
 from ..content import _read_audio
-from ..errors import LLMError, Provider, _error_message
+from ..errors import LLMError, Provider
 
 GradiumOutputFormat = Literal[
     "wav",
@@ -88,7 +88,8 @@ class _SpeechBody(TypedDict):
     output_format: GradiumOutputFormat
     only_audio: bool
     model_name: str
-    json_config: NotRequired[GradiumTTSConfig]
+    json_config: NotRequired[str]
+    """`GradiumTTSConfig` serialized: the API takes this field as a JSON string."""
 
 
 class GradiumSegment(TypedDict):
@@ -110,38 +111,29 @@ class GradiumSpeech:
     mime_type: str
 
 
-def _check_resp_status(resp: niquests.Response) -> niquests.Response:
-    """Raise `LLMError` on non-2xx; bodies are JSON `{"detail": ...}` or plain text."""
-    try:
-        return resp.raise_for_status()
-    except niquests.exceptions.HTTPError as error:
-        try:
-            data: Any = resp.json()
-        except Exception:
-            data = None
-        body = data if isinstance(data, dict) else None
-        message = _error_message(data) or (resp.text or "").strip()
-        raise LLMError(
-            "gradium", f"{resp.status_code} {message}".rstrip(), cause=error, body=body
-        ) from error
-
-
 def _parse_transcription(body: str) -> GradiumTranscription:
     """Fold the NDJSON stream into segments; `end_text` closes the latest `text`."""
     segments: list[GradiumSegment] = []
     for line in body.splitlines():
         if not line.strip():
             continue
-        msg = json.loads(line)
-        match msg.get("type"):
-            case "text":
-                segments.append(
-                    {"text": msg["text"], "start": msg["start_s"], "end": None}
-                )
-            case "end_text" if segments:
-                segments[-1]["end"] = msg["stop_s"]
-            case "error":
-                raise LLMError("gradium", msg.get("message", "transcription failed"))
+        try:
+            msg = json.loads(line)
+            match msg.get("type"):
+                case "text":
+                    segments.append(
+                        {"text": msg["text"], "start": msg["start_s"], "end": None}
+                    )
+                case "end_text" if segments:
+                    segments[-1]["end"] = msg["stop_s"]
+                case "error":
+                    raise LLMError(
+                        "gradium", msg.get("message", "transcription failed")
+                    )
+        except (ValueError, KeyError, AttributeError) as error:
+            raise LLMError(
+                "gradium", f"Malformed transcription line: {line!r}", cause=error
+            ) from error
     return {"text": " ".join(s["text"] for s in segments), "segments": segments}
 
 
@@ -159,17 +151,9 @@ class GradiumClient(StandaloneClientMixin):
     api_key: str | None = field(default=None, repr=False)
     base_url: str = GRADIUM_ENDPOINT
     # no 500: the docs say pre-stream auth and input errors use it too
+    # Gradium reports its own failures as plain-text 500s, so those are not retried.
     _retry: Retry = field(
-        default_factory=partial(
-            Retry,
-            total=3,
-            backoff_factor=0.5,
-            status_forcelist=[429, 502, 503, 504],
-            allowed_methods=["GET", "POST"],
-            respect_retry_after_header=True,
-            raise_on_status=False,
-        ),
-        repr=False,
+        default_factory=partial(standalone_retry, (502, 503, 504)), repr=False
     )
     _api_key: str = field(init=False, repr=False)
     _session: niquests.AsyncSession | None = field(init=False, default=None, repr=False)
@@ -189,7 +173,11 @@ class GradiumClient(StandaloneClientMixin):
         output_format: GradiumOutputFormat = "wav",
         config: GradiumTTSConfig | None = None,
     ) -> GradiumSpeech:
-        """Synthesize `text` with `voice_id` (else the client's default); `model="default"` is the latest."""
+        """Synthesize `text` with `voice_id` (else the client's default); `model="default"` is the latest.
+
+        The audio is requested whole (`only_audio`), so a failure after the response
+        started comes back as truncated audio, not an error.
+        """
         voice = voice_id or self.voice_id
         if not voice:
             raise ValueError(
@@ -203,8 +191,10 @@ class GradiumClient(StandaloneClientMixin):
             "model_name": model,
         }
         if config:
-            body["json_config"] = config
-        resp = _check_resp_status(await self.session.post("post/speech/tts", json=body))
+            body["json_config"] = json.dumps(config)
+        resp = self._check_resp_status(
+            await self.session.post("post/speech/tts", json=body)
+        )
         return GradiumSpeech(
             audio=resp.content or b"",
             mime_type=resp.headers.get("content-type", "application/octet-stream"),
@@ -212,8 +202,8 @@ class GradiumClient(StandaloneClientMixin):
 
     async def transcribe(
         self,
-        file: str | Path | bytes,
         *,
+        file: str | Path | bytes,
         language: GradiumLanguage = "any",
         model: str = "default",
         input_format: GradiumInputFormat | None = None,
@@ -242,4 +232,4 @@ class GradiumClient(StandaloneClientMixin):
             params=params,
             headers={"Content-Type": _INPUT_CONTENT_TYPES[fmt]},
         )
-        return _parse_transcription(_check_resp_status(resp).text or "")
+        return _parse_transcription(self._check_resp_status(resp).text or "")

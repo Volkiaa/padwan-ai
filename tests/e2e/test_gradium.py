@@ -17,7 +17,7 @@ async def test_speech_roundtrip():
         )
         assert speech.audio.startswith(b"RIFF")
 
-        result = await client.transcribe(speech.audio, language="en")
+        result = await client.transcribe(file=speech.audio, language="en")
 
     assert "fox" in result["text"].lower()
     assert result["segments"][0]["start"] >= 0

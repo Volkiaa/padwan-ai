@@ -216,6 +216,7 @@ async def test_errors(status, payload, headers, ctx, make_resp):
     resp = make_resp(status, payload, headers)
     if not isinstance(payload, dict):
         resp.json.side_effect = ValueError("not json")
+        resp.text = payload
     client, _ = _client(resp, voice_id="v")
 
     with ctx as exc:

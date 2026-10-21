@@ -15,9 +15,10 @@ Set `GRADIUM_API_KEY` in your environment or pass `api_key=` explicitly. `base_u
 `https://api.gradium.ai/api/`; use `https://eu.api.gradium.ai/api/` or `https://us.api.gradium.ai/api/` for data
 residency.
 
-Requests retry up to three times on connection errors, HTTP 429, 502, 503 and 504. API errors, including errors streamed
-after a successful response started, raise `LLMError` with `provider="gradium"`. Bad arguments (no voice, unknown audio
-extension) raise `ValueError`.
+Requests retry up to three times on connection errors, HTTP 502, 503 and 504 (Gradium reports its own failures as 500,
+which is not retried). A rate limit (429) raises `TooManyRequestsError`; other API errors, including errors streamed
+after a successful transcription response started, raise `LLMError` with `provider="gradium"`. Bad arguments (no voice,
+unknown audio extension) raise `ValueError`.
 
 ## Text-to-speech
 
@@ -44,7 +45,7 @@ the latest production model. Voice IDs come from the
 ```python
 async with GradiumClient() as client:
     result = await client.transcribe(
-        "meeting.wav",  # path or raw bytes: wav, raw pcm (24 kHz s16le mono) or Ogg Opus
+        file="meeting.wav",  # path or raw bytes: wav, raw pcm (24 kHz s16le mono) or Ogg Opus
         language="fr",  # default "any" auto-detects
         config={"keywords": {"words": ["Padwan", "Polarsen"], "boost": 3}},
     )
