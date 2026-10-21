@@ -15,8 +15,8 @@ from padwan_ai.elevenlabs import (
     ElevenLabsRealtimeTTSClient,
     ElevenLabsTTSConnection,
 )
-from padwan_ai.elevenlabs.realtime import _STTChunk, _TTSInit, _TTSText
-from padwan_ai.errors import LLMError, QuotaExceededError
+from padwan_ai.elevenlabs.realtime import _raise_on_error, _STTChunk, _TTSInit, _TTSText
+from padwan_ai.errors import LLMError, QuotaExceededError, TooManyRequestsError
 from tests.test_realtime import FakeExt
 
 
@@ -222,3 +222,30 @@ def test_stt_params_sdk_compat():
     assert set(get_args(ElevenLabsRealtimeAudioFormat)) == {
         f.value for f in AudioFormat
     }
+
+
+@pytest.mark.parametrize(
+    "message, error",
+    [
+        pytest.param({"audio": "AA=="}, None, id="no-error"),
+        pytest.param(
+            {"error": "slow", "message_type": "rate_limited"},
+            TooManyRequestsError,
+            id="rate-limited",
+        ),
+        pytest.param(
+            {"error": "slow", "message_type": "commit_throttled"},
+            TooManyRequestsError,
+            id="commit-throttled",
+        ),
+        pytest.param(
+            {"error": "no credits", "message_type": "quota_exceeded"},
+            QuotaExceededError,
+            id="quota",
+        ),
+        pytest.param({"error": "boom"}, LLMError, id="other"),
+    ],
+)
+def test_raise_on_error(message, error):
+    with pytest.raises(error) if error else nullcontext():
+        _raise_on_error(message)

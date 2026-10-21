@@ -7,7 +7,7 @@ import os
 from collections.abc import AsyncGenerator, AsyncIterator, Callable, Mapping, Sequence
 from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, ClassVar, Literal, Self
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, NoReturn, Self
 
 import niquests
 from niquests.typing import JSONEncoderType
@@ -16,6 +16,7 @@ from urllib3.exceptions import InvalidHeader
 from urllib3.util.retry import Retry
 
 from ._deprecation import warn_if_deprecated
+from ._json import loads as _json_loads
 from .conversation import ChatMessage
 from .errors import (
     LLMError,
@@ -422,6 +423,31 @@ class StandaloneClientMixin:
         """Whether a failed response's JSON body reports an exhausted quota (provider hook)."""
         return False
 
+    def _raise_http_error(
+        self,
+        resp: niquests.Response | niquests.AsyncResponse,
+        data: Any,
+        error: Exception,
+        text: str = "",
+    ) -> NoReturn:
+        """Map a failed response (`data` its JSON body, `text` its raw body) to padwan errors."""
+        body = data if isinstance(data, dict) else None
+        message = _error_message(data) or text.strip()
+        if resp.status_code == 429:
+            raise TooManyRequestsError(
+                retry_delay=retry_after_delay(resp.headers.get("retry-after")),
+                message=message or None,
+                response=resp,
+            ) from error
+        if self._quota_exceeded(body):
+            raise QuotaExceededError(body=body or {}) from error
+        raise LLMError(
+            self.provider,
+            f"{resp.status_code} {message}".rstrip(),
+            cause=error,
+            body=body,
+        ) from error
+
     def _check_resp_status(self, resp: niquests.Response) -> niquests.Response:
         """Raise padwan errors on non-2xx responses without consuming a successful body."""
         try:
@@ -431,22 +457,21 @@ class StandaloneClientMixin:
                 data: Any = resp.json()
             except Exception:
                 data = None
-            body = data if isinstance(data, dict) else None
-            message = _error_message(data) or (resp.text or "").strip()
-            if resp.status_code == 429:
-                raise TooManyRequestsError(
-                    retry_delay=retry_after_delay(resp.headers.get("retry-after")),
-                    message=message or None,
-                    response=resp,
-                ) from error
-            if self._quota_exceeded(body):
-                raise QuotaExceededError(body=body or {}) from error
-            raise LLMError(
-                self.provider,
-                f"{resp.status_code} {message}".rstrip(),
-                cause=error,
-                body=body,
-            ) from error
+            self._raise_http_error(resp, data, error, resp.text or "")
+
+    async def _check_stream_status(
+        self, resp: niquests.AsyncResponse
+    ) -> niquests.AsyncResponse:
+        """`_check_resp_status` for `stream=True` responses, whose body must be awaited."""
+        try:
+            return resp.raise_for_status()
+        except niquests.exceptions.HTTPError as error:
+            raw = await resp.content or b""
+            try:
+                data: Any = _json_loads(raw)
+            except ValueError:
+                data = None
+            self._raise_http_error(resp, data, error, raw.decode(errors="replace"))
 
     @property
     def session(self) -> niquests.AsyncSession:

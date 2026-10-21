@@ -8,8 +8,8 @@ icon: lucide/audio-lines
     The ElevenLabs client is experimental: its interface and typed payloads may change between minor releases without a deprecation cycle.
 
 ElevenLabs is an audio provider: text-to-speech, speech-to-text, speech-to-speech, sound effects and music, no chat
-models. `ElevenLabsClient` is standalone, like
-the [TypeSafe client](typesafe.md): it is not an `LLMClientBase` subclass and `LLMClient` does not route to it.
+models. `ElevenLabsClient` is standalone, like the [TypeSafe client](typesafe.md): it is not an `LLMClientBase`
+subclass, `LLMClient` does not route to it, and the OpenTelemetry instrumentation does not cover it.
 
 ## Configuration
 
@@ -17,9 +17,10 @@ Set `ELEVENLABS_API_KEY` in your environment or pass `api_key=` explicitly. `bas
 `https://api.elevenlabs.io/v1/`; point it at a data-residency host (e.g. `https://api.eu.residency.elevenlabs.io/v1/`) if
 your account needs one.
 
-Requests retry up to three times on connection errors, HTTP 429 and 5xx, respecting `Retry-After`. Exhausted rate limits
-raise `TooManyRequestsError`, an exhausted credit quota raises `QuotaExceededError`, and other API errors raise
-`LLMError` with `provider="elevenlabs"`. Bad arguments (no voice, no or two audio sources) raise `ValueError`.
+Requests retry up to three times on connection errors and 5xx, respecting `Retry-After`, as the chat clients do. A
+rate limit (429, or a realtime `rate_limited`/`commit_throttled`/`queue_overflow` frame) raises `TooManyRequestsError`,
+an exhausted credit quota raises `QuotaExceededError` (not an `LLMError`), and other API errors raise `LLMError` with
+`provider="elevenlabs"`. Bad arguments (no voice, no or two audio sources) raise `ValueError`.
 
 The realtime clients need the `realtime` extra (niquests WebSocket support):
 
@@ -93,7 +94,8 @@ latency/quality trade-off.
 ```python
 async with ElevenLabsClient() as client:
     result = await client.transcribe(
-        "meeting.wav",  # path or raw bytes; or source_url="https://..."
+        file="meeting.wav",  # path or raw bytes (then pass filename=); or source_url="https://..."
+        language="en",  # optional ISO code, as on the OpenAI and Mistral clients
         diarize=True,
         keyterms=["Padwan", "Polarsen"],
     )

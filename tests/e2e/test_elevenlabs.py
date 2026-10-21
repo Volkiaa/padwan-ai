@@ -42,6 +42,7 @@ async def test_stream_speech_and_voices():
     assert voice["voice_id"] == VOICE_ID
 
 
+@pytest.mark.paid
 async def test_clone_and_delete_voice():
     async with ElevenLabsClient(voice_id=VOICE_ID) as client:
         sample = await client.generate_speech(
@@ -123,6 +124,6 @@ async def test_speech_to_speech(stream):
             audio = (
                 await client.speech_to_speech(source.audio, target["voice_id"])
             ).audio
-        result = await client.transcribe(audio, language_code="en")
+        result = await client.transcribe(file=audio, language="en")
 
     assert "fox" in result["text"].lower()

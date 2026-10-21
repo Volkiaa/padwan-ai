@@ -15,7 +15,7 @@ import niquests
 
 from .._base import RealtimeClientBase, env_api_key
 from .._ws import WsConnection
-from ..errors import LLMError, Provider, QuotaExceededError
+from ..errors import LLMError, Provider, QuotaExceededError, TooManyRequestsError
 from .client import ElevenLabsOutputFormat, VoiceSettings
 
 __all__ = (
@@ -67,15 +67,20 @@ class _STTChunk(TypedDict):
     previous_text: NotRequired[str]
 
 
+_THROTTLE_KINDS = frozenset({"rate_limited", "commit_throttled", "queue_overflow"})
+
+
 def _raise_on_error(message: Mapping[str, Any]) -> None:
     """Raise padwan errors for error frames (TTS sends `error`, Scribe also sets `message_type`)."""
     error = message.get("error")
     if not error:
         return
-    if message.get("message_type") == "quota_exceeded":
-        raise QuotaExceededError(body=dict(message))
     kind = message.get("message_type") or "error"
     detail = message.get("message") or error
+    if kind == "quota_exceeded":
+        raise QuotaExceededError(body=dict(message))
+    if kind in _THROTTLE_KINDS:
+        raise TooManyRequestsError(retry_delay=1, message=f"{kind}: {detail}")
     raise LLMError("elevenlabs", f"{kind}: {detail}", body=dict(message))
 
 
@@ -280,11 +285,12 @@ class ElevenLabsRealtimeSTTClient(
         sample_rate = int(self.audio_format.rsplit("_", 1)[1])
         conn = ElevenLabsSTTConnection(ext, sample_rate=sample_rate)
         try:
-            async for message in conn:
-                if message.get("message_type") == "session_started":
-                    break
-            else:
-                raise LLMError("elevenlabs", "session closed before session_started")
+            await conn.wait_for(
+                lambda m: m.get("message_type") == "session_started",
+                timeout=self.timeout,
+                provider="elevenlabs",
+                what="session_started",
+            )
             yield conn
         finally:
             await conn.close()
@@ -336,4 +342,8 @@ class ElevenLabsSTTConnection(WsConnection):
 
     @staticmethod
     def is_committed(message: Mapping[str, Any]) -> bool:
-        return message.get("message_type") == "committed_transcript"
+        """Whether `message` is a committed transcript (with or without timestamps)."""
+        return message.get("message_type") in (
+            "committed_transcript",
+            "committed_transcript_with_timestamps",
+        )

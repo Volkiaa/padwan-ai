@@ -1,16 +1,12 @@
 import dataclasses
-import json
 from collections.abc import AsyncGenerator, Mapping, Sequence
 from contextlib import aclosing
 from dataclasses import field
-from functools import partial
-from http import HTTPStatus
 from pathlib import Path
 from typing import (
     Any,
     ClassVar,
     Literal,
-    NoReturn,
     NotRequired,
     TypedDict,
     Unpack,
@@ -22,14 +18,11 @@ import niquests
 from niquests.typing import MultiPartFilesType
 from urllib3.util.retry import Retry
 
-from .._base import StandaloneClientMixin, env_api_key
+from .._base import StandaloneClientMixin, env_api_key, standalone_retry
+from .._json import dumps as _json_dumps
 from ..content import _read_audio
 from ..errors import (
-    LLMError,
     Provider,
-    QuotaExceededError,
-    TooManyRequestsError,
-    _error_message,
 )
 
 ElevenLabsTTSModel = Literal[
@@ -41,9 +34,15 @@ ElevenLabsTTSModel = Literal[
     "eleven_flash_v2_5",
     "eleven_flash_v2",
 ]
-ElevenLabsSTTModel = Literal["scribe_v2", "scribe_v2_medical", "scribe_v2_realtime"]
+ElevenLabsSTTModel = Literal["scribe_v2", "scribe_v2_medical"]
+ElevenLabsRealtimeSTTModel = Literal["scribe_v2_realtime"]
 ElevenLabsSTSModel = Literal["eleven_multilingual_sts_v2", "eleven_english_sts_v2"]
-ElevenLabsModel = ElevenLabsTTSModel | ElevenLabsSTTModel | ElevenLabsSTSModel
+ElevenLabsModel = (
+    ElevenLabsTTSModel
+    | ElevenLabsSTTModel
+    | ElevenLabsRealtimeSTTModel
+    | ElevenLabsSTSModel
+)
 
 ElevenLabsOutputFormat = Literal[
     "alaw_8000",
@@ -79,6 +78,7 @@ ElevenLabsOutputFormat = Literal[
 ELEVENLABS_MODELS: set[str] = (
     set(get_args(ElevenLabsTTSModel))
     | set(get_args(ElevenLabsSTTModel))
+    | set(get_args(ElevenLabsRealtimeSTTModel))
     | set(get_args(ElevenLabsSTSModel))
 )
 ELEVENLABS_ENDPOINT = "https://api.elevenlabs.io/v1/"
@@ -89,6 +89,7 @@ __all__ = (
     "ElevenLabsClient",
     "ElevenLabsModel",
     "ElevenLabsOutputFormat",
+    "ElevenLabsRealtimeSTTModel",
     "ElevenLabsSTSModel",
     "ElevenLabsSTTModel",
     "ElevenLabsAudio",
@@ -208,56 +209,6 @@ class ElevenLabsAudio:
     request_id: str | None = None
 
 
-def _raise_error(
-    resp: niquests.Response | niquests.AsyncResponse, data: Any, error: Exception
-) -> NoReturn:
-    """Map an error response body to padwan errors."""
-    body = data if isinstance(data, dict) else None
-    message = _error_message(data)
-    if resp.status_code == HTTPStatus.TOO_MANY_REQUESTS:
-        retry_after = resp.headers.get("retry-after")
-        raise TooManyRequestsError(
-            retry_delay=int(retry_after)
-            if retry_after and retry_after.isdigit()
-            else 60,
-            message=message or None,
-            response=resp,
-        ) from error
-    detail = body.get("detail") if body else None
-    if isinstance(detail, dict) and detail.get("status") == "quota_exceeded":
-        raise QuotaExceededError(body=body or {}) from error
-    raise LLMError(
-        "elevenlabs",
-        f"{resp.status_code} {message}".rstrip(),
-        cause=error,
-        body=body,
-    ) from error
-
-
-def _check_resp_status(resp: niquests.Response) -> niquests.Response:
-    """Raise padwan errors on non-2xx responses without consuming a successful body."""
-    try:
-        return resp.raise_for_status()
-    except niquests.exceptions.HTTPError as error:
-        try:
-            data: Any = resp.json()
-        except Exception:
-            data = None
-        _raise_error(resp, data, error)
-
-
-async def _check_stream_status(resp: niquests.AsyncResponse) -> niquests.AsyncResponse:
-    """`_check_resp_status` for `stream=True` responses, whose body must be awaited."""
-    try:
-        return resp.raise_for_status()
-    except niquests.exceptions.HTTPError as error:
-        try:
-            data: Any = json.loads(await resp.content or b"")
-        except ValueError:
-            data = None
-        _raise_error(resp, data, error)
-
-
 def _speech_body(text: str, model: str, options: SpeechOptions) -> _SpeechBody:
     body: _SpeechBody = {"text": text, "model_id": model}
     for key in (
@@ -281,7 +232,7 @@ async def _sts_parts(
 ) -> MultiPartFilesType:
     fields: list[tuple[str, str]] = [("model_id", model)]
     if (settings := options.get("voice_settings")) is not None:
-        fields.append(("voice_settings", json.dumps(settings)))
+        fields.append(("voice_settings", _json_dumps(settings)))
     if (seed := options.get("seed")) is not None:
         fields.append(("seed", str(seed)))
     if options.get("remove_background_noise"):
@@ -308,18 +259,7 @@ class ElevenLabsClient(StandaloneClientMixin):
     timeout: float = 60
     api_key: str | None = field(default=None, repr=False)
     base_url: str = ELEVENLABS_ENDPOINT
-    _retry: Retry = field(
-        default_factory=partial(
-            Retry,
-            total=3,
-            backoff_factor=0.5,
-            status_forcelist=[429, 500, 502, 503, 504],
-            allowed_methods=["GET", "POST"],
-            respect_retry_after_header=True,
-            raise_on_status=False,
-        ),
-        repr=False,
-    )
+    _retry: Retry = field(default_factory=standalone_retry, repr=False)
     _api_key: str = field(init=False, repr=False)
     _session: niquests.AsyncSession | None = field(init=False, default=None, repr=False)
 
@@ -328,6 +268,10 @@ class ElevenLabsClient(StandaloneClientMixin):
 
     def _set_auth_headers(self, session: niquests.AsyncSession) -> None:
         session.headers["xi-api-key"] = self._api_key
+
+    def _quota_exceeded(self, body: dict[str, Any] | None) -> bool:
+        detail = body.get("detail") if body else None
+        return isinstance(detail, dict) and detail.get("status") == "quota_exceeded"
 
     def _voice(self, voice_id: str | None) -> str:
         voice = voice_id or self.voice_id
@@ -341,7 +285,7 @@ class ElevenLabsClient(StandaloneClientMixin):
         self, path: str, output_format: str | None, **request: Any
     ) -> ElevenLabsAudio:
         params = {"output_format": output_format} if output_format else None
-        resp = _check_resp_status(
+        resp = self._check_resp_status(
             await self.session.post(path, params=params, **request)
         )
         return ElevenLabsAudio(
@@ -355,7 +299,7 @@ class ElevenLabsClient(StandaloneClientMixin):
         text: str,
         voice_id: str | None = None,
         *,
-        model: str = "eleven_multilingual_v2",
+        model: ElevenLabsTTSModel | str = "eleven_multilingual_v2",
         output_format: ElevenLabsOutputFormat | None = None,
         **options: Unpack[SpeechOptions],
     ) -> ElevenLabsAudio:
@@ -371,7 +315,7 @@ class ElevenLabsClient(StandaloneClientMixin):
         text: str,
         voice_id: str | None = None,
         *,
-        model: str = "eleven_multilingual_v2",
+        model: ElevenLabsTTSModel | str = "eleven_multilingual_v2",
         output_format: ElevenLabsOutputFormat | None = None,
         chunk_size: int = 4096,
         **options: Unpack[SpeechOptions],
@@ -396,7 +340,7 @@ class ElevenLabsClient(StandaloneClientMixin):
         params = {"output_format": output_format} if output_format else None
         resp = await self.session.post(path, params=params, stream=True, **request)
         try:
-            resp = await _check_stream_status(resp)
+            resp = await self._check_stream_status(resp)
             async for chunk in await resp.iter_content(chunk_size):
                 yield bytes(chunk)
         finally:
@@ -407,7 +351,7 @@ class ElevenLabsClient(StandaloneClientMixin):
         audio: str | Path | bytes,
         voice_id: str | None = None,
         *,
-        model: str = "eleven_multilingual_sts_v2",
+        model: ElevenLabsSTSModel | str = "eleven_multilingual_sts_v2",
         output_format: ElevenLabsOutputFormat | None = None,
         **options: Unpack[SpeechToSpeechOptions],
     ) -> ElevenLabsAudio:
@@ -423,7 +367,7 @@ class ElevenLabsClient(StandaloneClientMixin):
         audio: str | Path | bytes,
         voice_id: str | None = None,
         *,
-        model: str = "eleven_multilingual_sts_v2",
+        model: ElevenLabsSTSModel | str = "eleven_multilingual_sts_v2",
         output_format: ElevenLabsOutputFormat | None = None,
         chunk_size: int = 4096,
         **options: Unpack[SpeechToSpeechOptions],
@@ -491,12 +435,12 @@ class ElevenLabsClient(StandaloneClientMixin):
     async def list_voices(self, *, show_legacy: bool = False) -> list[ElevenLabsVoice]:
         """Voices available to the account: premade, cloned and added from the library."""
         params = {"show_legacy": "true"} if show_legacy else None
-        resp = _check_resp_status(await self.session.get("voices", params=params))
+        resp = self._check_resp_status(await self.session.get("voices", params=params))
         voices: list[ElevenLabsVoice] = resp.json()["voices"]
         return voices
 
     async def get_voice(self, voice_id: str) -> ElevenLabsVoice:
-        resp = _check_resp_status(await self.session.get(f"voices/{voice_id}"))
+        resp = self._check_resp_status(await self.session.get(f"voices/{voice_id}"))
         voice: ElevenLabsVoice = resp.json()
         return voice
 
@@ -516,7 +460,7 @@ class ElevenLabsClient(StandaloneClientMixin):
         if description is not None:
             parts.append(("description", (None, description)))
         if labels:
-            parts.append(("labels", (None, json.dumps(dict(labels)))))
+            parts.append(("labels", (None, _json_dumps(dict(labels)))))
         if remove_background_noise:
             parts.append(("remove_background_noise", (None, "true")))
         for file in files:
@@ -524,19 +468,21 @@ class ElevenLabsClient(StandaloneClientMixin):
         resp = await self.session.post(
             "voices/add", files=cast("MultiPartFilesType", parts)
         )
-        voice_id: str = _check_resp_status(resp).json()["voice_id"]
+        voice_id: str = self._check_resp_status(resp).json()["voice_id"]
         return voice_id
 
     async def delete_voice(self, voice_id: str) -> None:
-        _check_resp_status(await self.session.delete(f"voices/{voice_id}"))
+        self._check_resp_status(await self.session.delete(f"voices/{voice_id}"))
 
     async def transcribe(
         self,
-        file: str | Path | bytes | None = None,
         *,
+        file: str | Path | bytes | None = None,
+        filename: str | None = None,
+        content_type: str | None = None,
         source_url: str | None = None,
-        model: str = "scribe_v2",
-        language_code: str | None = None,
+        model: ElevenLabsSTTModel | str = "scribe_v2",
+        language: str | None = None,
         diarize: bool = False,
         num_speakers: int | None = None,
         tag_audio_events: bool | None = None,
@@ -545,14 +491,17 @@ class ElevenLabsClient(StandaloneClientMixin):
         temperature: float | None = None,
         seed: int | None = None,
     ) -> ElevenLabsTranscription:
-        """Transcribe a local `file` (path or raw bytes) or a remote `source_url`; exactly one is required."""
+        """Transcribe a local `file` (path or raw bytes) or a remote `source_url`; exactly one is required.
+
+        ``filename`` and ``content_type`` override what the path (or raw bytes) imply.
+        """
         if (file is None) == (source_url is None):
             raise ValueError("Provide exactly one of file or source_url")
         fields: list[tuple[str, str]] = [("model_id", model)]
         if source_url is not None:
             fields.append(("source_url", source_url))
-        if language_code is not None:
-            fields.append(("language_code", language_code))
+        if language is not None:
+            fields.append(("language_code", language))
         if diarize:
             fields.append(("diarize", "true"))
         if num_speakers is not None:
@@ -570,9 +519,16 @@ class ElevenLabsClient(StandaloneClientMixin):
         # every field goes in `files` so source_url-only requests stay multipart
         parts: list[_Part] = [(name, (None, value)) for name, value in fields]
         if file is not None:
-            parts.append(("file", await _read_audio(file)))
+            parts.append(
+                (
+                    "file",
+                    await _read_audio(
+                        file, filename=filename, content_type=content_type
+                    ),
+                )
+            )
         resp = await self.session.post(
             "speech-to-text", files=cast("MultiPartFilesType", parts)
         )
-        result: ElevenLabsTranscription = _check_resp_status(resp).json()
+        result: ElevenLabsTranscription = self._check_resp_status(resp).json()
         return result

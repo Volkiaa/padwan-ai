@@ -164,17 +164,25 @@ async def test_transcribe(kwargs, expected, ctx, make_resp):
         session.post.assert_awaited_once_with("speech-to-text", files=expected)
 
 
-async def test_transcribe_path(tmp_path, make_resp):
+@pytest.mark.parametrize(
+    "kwargs, expected",
+    [
+        pytest.param({}, ("clip.mp3", b"RIFF", "audio/mpeg"), id="from-path"),
+        pytest.param(
+            {"filename": "clip.ogg", "content_type": "audio/ogg"},
+            ("clip.ogg", b"RIFF", "audio/ogg"),
+            id="overrides",
+        ),
+    ],
+)
+async def test_transcribe_path(tmp_path, make_resp, kwargs, expected):
     audio = tmp_path / "clip.mp3"
     audio.write_bytes(b"RIFF")
     client, session = _client(make_resp(200, TRANSCRIPTION))
 
-    await client.transcribe(audio)
+    await client.transcribe(file=audio, **kwargs)
 
-    assert session.post.await_args.kwargs["files"][-1] == (
-        "file",
-        ("clip.mp3", b"RIFF", "audio/mpeg"),
-    )
+    assert session.post.await_args.kwargs["files"][-1] == ("file", expected)
 
 
 @pytest.mark.parametrize(
@@ -208,15 +216,28 @@ async def test_transcribe_path(tmp_path, make_resp):
             pytest.raises(TooManyRequestsError),
             id="rate-limit",
         ),
+        pytest.param(
+            429,
+            "<html>Too Many Requests</html>",
+            {"retry-after": "Wed, 21 Oct 2026 10:00:00 GMT"},
+            pytest.raises(TooManyRequestsError),
+            id="rate-limit-http-date-no-json",
+        ),
     ],
 )
 async def test_errors(status, payload, headers, ctx, make_resp):
-    client, _ = _client(make_resp(status, payload, headers), voice_id="v")
+    resp = make_resp(status, payload, headers)
+    if not isinstance(payload, dict):
+        resp.json.side_effect = ValueError("not json")
+        resp.text = payload
+    client, _ = _client(resp, voice_id="v")
 
     with ctx as exc:
         await client.generate_speech("Hi")
     if isinstance(exc.value, TooManyRequestsError):
-        assert exc.value.retry_delay == 3
+        assert exc.value.retry_delay >= 1
+        if headers == {"retry-after": "3"}:
+            assert exc.value.retry_delay == 3
 
 
 @pytest.mark.parametrize(
@@ -487,6 +508,10 @@ def _literal_values(tp: object) -> set[str]:
     return {v for arg in get_args(tp) for v in get_args(arg)} or set(get_args(tp))
 
 
+_RENAMED = {"model": "model_id", "language": "language_code"}
+_LOCAL = {"filename", "content_type"}  # upload controls padwan adds on every client
+
+
 def _sdk_params(method: Callable[..., object]) -> set[str]:
     params = inspect.signature(method).parameters.values()
     names = {p.name for p in params if p.kind is not p.VAR_KEYWORD}
@@ -554,8 +579,8 @@ def test_sdk_compat(local_type: type, sdk_keys: set[str]):
     ],
 )
 def test_params_sdk_compat(method, sdk_method):
-    """Our keyword options are SDK params (`model` maps to `model_id`)."""
-    ours = {"model_id" if p == "model" else p for p in _sdk_params(method)}
+    """Our keyword options are SDK params, bar the padwan-wide upload/language names."""
+    ours = {_RENAMED.get(p, p) for p in _sdk_params(method) - _LOCAL}
     assert ours <= _sdk_params(sdk_method)
 
 

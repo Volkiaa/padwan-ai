@@ -59,19 +59,42 @@ class WsConnection:
 
         sender = asyncio.create_task(run())
         final = False
+        read_error: Exception | None = None
         try:
             async for message in self:
                 if is_final(message):
                     final = True
                     break
                 yield message
+        except Exception as error:
+            read_error = error  # a send failure closes the socket; report the cause
         finally:
             sender.cancel()
             (outcome,) = await asyncio.gather(sender, return_exceptions=True)
         if isinstance(outcome, Exception):
-            raise outcome
+            raise outcome from read_error
+        if read_error is not None:
+            raise read_error
         if not final:
             raise LLMError(provider, "connection closed before the end of the stream")
+
+    async def wait_for(
+        self,
+        predicate: Callable[[Mapping[str, Any]], bool],
+        *,
+        timeout: float,
+        provider: Provider,
+        what: str,
+    ) -> dict[str, Any]:
+        """Read until a message satisfies `predicate`; a close or `timeout` raises `LLMError`."""
+        try:
+            async with asyncio.timeout(timeout):
+                async for message in self:
+                    if predicate(message):
+                        return message
+        except TimeoutError as error:
+            raise LLMError(provider, f"timed out waiting for {what}") from error
+        raise LLMError(provider, f"connection closed before {what}")
 
     async def close(self) -> None:
         """Close the underlying websocket (idempotent)."""
