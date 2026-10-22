@@ -17,6 +17,7 @@ from urllib3.util.retry import Retry
 
 from .._base import (
     PADWAN_API_KEY_ENV,
+    RETRY_AFTER_MAX,
     ChatStream,
     LLMClientBase,
     Provider,
@@ -296,6 +297,7 @@ class _OpenAIBase(_OpenAIAuth, LLMClientBase[Retry], OpenAIToolMixin):
                 524,  # A Timeout Occurred
             ],
             allowed_methods=["POST"],
+            retry_after_max=RETRY_AFTER_MAX,
         )
     )
 

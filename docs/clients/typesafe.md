@@ -19,8 +19,9 @@ The client defaults to `model="jev-latest"`, `timeout=60`, and
 `base_url="https://api.typesafe.ai/v1/"`. The client does not load `.env` itself.
 
 Requests use niquests' built-in retry handling: up to two retries for connection
-errors, timeouts, HTTP 408/429, and 5xx responses, respecting `Retry-After`.
-Exhausted rate limits raise `TooManyRequestsError`; other provider errors raise
+errors, timeouts, HTTP 408/429, and 5xx responses, respecting `Retry-After` up to
+30 seconds per attempt. Exhausted rate limits raise `TooManyRequestsError` whose
+`retry_delay` is the server's full `Retry-After`; other provider errors raise
 `LLMError` with `provider="typesafe"`.
 
 ## Evaluate several questions

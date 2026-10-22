@@ -8,7 +8,7 @@ from typing import Any, ClassVar, Literal, Self, cast, get_args
 import niquests
 from urllib3.util.retry import Retry
 
-from .._base import env_api_key, retry_after_delay
+from .._base import RETRY_AFTER_MAX, env_api_key, retry_after_delay
 from ..errors import LLMError, Provider, TooManyRequestsError
 from .models import JSONContent, Question, SystemOneResponse
 
@@ -93,6 +93,7 @@ class TypeSafeClient:
             status_forcelist=[408, 429, *range(500, 600)],
             allowed_methods=["POST"],
             respect_retry_after_header=True,
+            retry_after_max=RETRY_AFTER_MAX,
             raise_on_status=False,
         ),
         repr=False,

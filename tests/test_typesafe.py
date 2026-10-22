@@ -1,13 +1,17 @@
+import asyncio
 from contextlib import nullcontext
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from threading import Thread
+from types import SimpleNamespace
 from typing import cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+import urllib3.util.retry
 from urllib3.util.retry import Retry
 
 from padwan_ai import TYPESAFE_MODELS, TypeSafeClient
+from padwan_ai._base import RETRY_AFTER_MAX
 from padwan_ai.errors import LLMError, TooManyRequestsError
 from padwan_ai.typesafe.client import _check_resp
 
@@ -174,7 +178,9 @@ def test_api_key_resolution(api_key, env_key, ctx, monkeypatch):
         assert "environment" not in repr(client)
 
 
-async def test_niquests_retries_twice_then_maps_rate_limit() -> None:
+async def test_niquests_retries_twice_then_maps_rate_limit(monkeypatch) -> None:
+    """Each retry sleeps at most the cap; the raised error carries the real delay."""
+
     class RateLimitHandler(BaseHTTPRequestHandler):
         attempts = 0
 
@@ -182,13 +188,23 @@ async def test_niquests_retries_twice_then_maps_rate_limit() -> None:
             type(self).attempts += 1
             self.send_response(429)
             self.send_header("content-type", "application/json")
-            self.send_header("retry-after", "0")
+            self.send_header("retry-after", "1200")
             self.end_headers()
             self.wfile.write(b'{"error":{"message":"slow down"}}')
 
         def log_message(self, format: str, *args: object) -> None:
             return
 
+    sleeps: list[float] = []
+
+    async def record_sleep(delay: float) -> None:
+        sleeps.append(delay)
+        await asyncio.sleep(0)
+
+    # only urllib3's retry sleeps; niquests polls with asyncio.sleep too
+    monkeypatch.setattr(
+        urllib3.util.retry, "asyncio", SimpleNamespace(sleep=record_sleep)
+    )
     try:
         server = ThreadingHTTPServer(("127.0.0.1", 0), RateLimitHandler)
     except PermissionError:
@@ -202,7 +218,9 @@ async def test_niquests_retries_twice_then_maps_rate_limit() -> None:
             async with client:
                 await client.system_one("ticket", QUESTIONS)
         assert caught.value.message == "slow down"
+        assert caught.value.retry_delay == 1200
         assert RateLimitHandler.attempts == 3
+        assert sleeps == [RETRY_AFTER_MAX, RETRY_AFTER_MAX]
     finally:
         server.shutdown()
         server.server_close()
