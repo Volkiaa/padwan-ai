@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792533299658,
+  "lastUpdate": 1792704548946,
   "repoUrl": "https://github.com/polarsen-io/padwan-ai",
   "entries": {
     "Import Performance": [
@@ -3468,6 +3468,66 @@ window.BENCHMARK_DATA = {
             "value": 234.64,
             "unit": "ms",
             "range": 6.58
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "julien.brayere@obitrain.com",
+            "name": "Julien Brayere",
+            "username": "Andarius"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "2e33ca14d8ede0f572b2d81f4dc17fe370cdf196",
+          "message": "ci(docs): preview docs PRs on GitHub Pages (#132)\n\n* ci(docs): preview docs PRs on GitHub Pages\n\nPublish master to the gh-pages root and each docs PR under pr-preview/pr-<N>/, with the preview link commented on the PR and removed on close, as in sre-config.\n\n* ci(docs): mark what a docs PR changes on its preview\n\nPort of sre-config's docs/pr-preview marking to the Material theme: added and changed blocks are highlighted on the preview pages, the sidebar badges changed pages, and the sticky PR comment lists each changed, new or removed page.\n\n* ci(docs): keep the benchmark history when deploying the site root\n\nperf.yml stores import benchmark results under dev/bench on gh-pages; the master deploy must not clean them.",
+          "timestamp": "2026-10-22T23:28:17+02:00",
+          "tree_id": "2f8c6a6924069805ae6c7582b81ebf00d3a7d866",
+          "url": "https://github.com/polarsen-io/padwan-ai/commit/2e33ca14d8ede0f572b2d81f4dc17fe370cdf196"
+        },
+        "date": 1792704548211,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "3.13 · padwan_ai (facade)",
+            "value": 225.84,
+            "unit": "ms",
+            "range": 2.62
+          },
+          {
+            "name": "3.13 · padwan_ai.openai",
+            "value": 225.37,
+            "unit": "ms",
+            "range": 2.95
+          },
+          {
+            "name": "3.13 · padwan_ai.otel",
+            "value": 242.84,
+            "unit": "ms",
+            "range": 5.4
+          },
+          {
+            "name": "3.15 · padwan_ai (facade)",
+            "value": 52.82,
+            "unit": "ms",
+            "range": 0.93
+          },
+          {
+            "name": "3.15 · padwan_ai.openai",
+            "value": 201.53,
+            "unit": "ms",
+            "range": 8.51
+          },
+          {
+            "name": "3.15 · padwan_ai.otel",
+            "value": 237.43,
+            "unit": "ms",
+            "range": 5.81
           }
         ]
       }
