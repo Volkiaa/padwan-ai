@@ -708,6 +708,21 @@ class TestMcpStreamable:
         # No exception means the keep-alive was skipped before json().
         keepalive.json.assert_not_called()
 
+    async def test_listen_has_no_read_timeout(self, mock_http):
+        """The notification GET idles for minutes; a read timeout would count
+        every quiet spell as a listener failure (regression: 30 s default)."""
+        client = McpStreamable(url="https://example.com/mcp")
+        client._http = mock_http
+        self._setup_post_responses(
+            mock_http,
+            _make_response(_INIT_RESULT),
+            _make_response({}),
+            _make_response(_TOOLS_RESULT),
+        )
+        async with client:
+            await asyncio.sleep(0.05)
+        assert mock_http.get.call_args.kwargs["timeout"].read_timeout is None
+
     async def test_listen_stops_after_max_retries(self, mock_http, caplog):
         """_listen gives up after _MAX_LISTEN_RETRIES consecutive failures."""
         mock_http.get = AsyncMock(side_effect=ConnectionError("down"))

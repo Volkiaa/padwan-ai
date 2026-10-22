@@ -92,7 +92,7 @@ flowchart LR
 
 The **foreground channel** (`_rpc`) handles request/response: you `await tool.handler(...)`, it POSTs a JSON-RPC request, gets back either a single JSON response or an SSE stream containing the response. This is what user code interacts with directly.
 
-The **background channel** (`_listen`) is a persistent GET against the same `/mcp` endpoint, opened during `__aenter__` and torn down in `__aexit__`. It receives **unsolicited server pushes** — things the server wants to tell you without being asked, like `notifications/tools/list_changed` (server's tool list changed, we should re-fetch) or out-of-band `notifications/progress` for long-running operations.
+The **background channel** (`_listen`) is a persistent GET against the same `/mcp` endpoint, opened during `__aenter__` and torn down in `__aexit__`. It receives **unsolicited server pushes** — things the server wants to tell you without being asked, like `notifications/tools/list_changed` (server's tool list changed, we should re-fetch) or out-of-band `notifications/progress` for long-running operations. It is opened without a read timeout: a quiet stream is normal, and timing it out would count as a listener failure.
 
 This separation means **the listener can deliver notifications even while you have no in-flight RPC**. Without it, a server that wanted to tell you "my tools changed" would have to wait until you happened to ask for something.
 
