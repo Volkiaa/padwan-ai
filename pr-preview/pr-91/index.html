@@ -5,7 +5,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1" name="viewport"/>
-<meta content="Lightweight async client for OpenAI, Gemini, Mistral, Grok, Anthropic, TypeSafe (JEV, experimental), and any OpenAI-compatible API" name="description"/>
+<meta content="Lightweight async client for OpenAI, Gemini, Mistral, Grok, Anthropic, ElevenLabs (experimental), Gradium (experimental), TypeSafe (JEV, experimental), and any OpenAI-compatible API" name="description"/>
 <link href="https://polarsen-io.github.io/padwan-ai/" rel="canonical"/>
 <link href="./getting-started/" rel="next"/>
 <link href="./static/favicon.png" rel="icon"/>
@@ -380,6 +380,30 @@ html:not(.pr-diff-off) :is(.admonition, .tabbed-set, .highlight)[data-pr-diff] {
 </a>
 </li>
 <li class="md-nav__item">
+<a class="md-nav__link" href="./clients/elevenlabs/">
+<svg class="lucide lucide-audio-lines" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M2 10v3M6 6v11M10 3v18M14 8v7M18 5v13M22 10v3"></path></svg>
+<span class="md-ellipsis">
+    
+  
+  ElevenLabs (experimental)
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="./clients/gradium/">
+<svg class="lucide lucide-audio-waveform" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M2 13a2 2 0 0 0 2-2V7a2 2 0 0 1 4 0v13a2 2 0 0 0 4 0V4a2 2 0 0 1 4 0v13a2 2 0 0 0 4 0v-4a2 2 0 0 1 2-2"></path></svg>
+<span class="md-ellipsis">
+    
+  
+  Gradium (experimental)
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
 <a class="md-nav__link" href="./clients/typesafe/">
 <svg class="lucide lucide-shield-check" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path><path d="m9 12 2 2 4-4"></path></svg>
 <span class="md-ellipsis">
@@ -449,7 +473,7 @@ html:not(.pr-diff-off) :is(.admonition, .tabbed-set, .highlight)[data-pr-diff] {
 <div class="md-content" data-md-component="content">
 <article class="md-content__inner md-typeset">
 <h1 id="padwan-ai">Padwan AI</h1>
-<p>Lightweight async client for OpenAI, Gemini, Mistral, Grok, Anthropic, TypeSafe (JEV, experimental), and any OpenAI-compatible API.</p>
+<p>Lightweight async client for OpenAI, Gemini, Mistral, Grok, Anthropic, ElevenLabs (experimental), Gradium (experimental), TypeSafe (JEV, experimental), and any OpenAI-compatible API.</p>
 <h2 id="why">Why</h2>
 <p>Most LLM client libraries pull in heavy dependencies (pydantic, httpx) and lock you into a single provider's SDK. Padwan AI takes a different approach:</p>
 <ul>
@@ -469,7 +493,7 @@ html:not(.pr-diff-off) :is(.admonition, .tabbed-set, .highlight)[data-pr-diff] {
 <li><strong>MCP support</strong> - Streamable HTTP and stdio transports for <a href="https://modelcontextprotocol.io/">Model Context Protocol</a> tool servers</li>
 <li><strong>Thinking models</strong> - Stream Gemini, Claude, Mistral, Grok and vLLM thought tokens separately via an <code>on_thought</code> callback</li>
 <li><strong>Realtime voice</strong> - Speech-to-speech WebSocket sessions (OpenAI Realtime, Gemini Live, Grok Voice) via <code>RealtimeClient</code></li>
-<li><strong>Text-to-speech</strong> - Single and two-speaker Gemini TTS via <code>GeminiClient.generate_speech</code> (<a href="clients/gemini/#text-to-speech">details</a>)</li>
+<li><strong>Text-to-speech</strong> - Single and two-speaker Gemini TTS via <code>GeminiClient.generate_speech</code> (<a href="clients/gemini/#text-to-speech">details</a>), ElevenLabs and Gradium TTS (REST, streaming and WebSocket), transcription and speech-to-speech, plus ElevenLabs sound effects and music, via <a href="clients/elevenlabs/"><code>ElevenLabsClient</code></a> and <a href="clients/gradium/"><code>GradiumClient</code></a></li>
 </ul>
 <h2 id="supported-providers">Supported Providers</h2>
 <table>
@@ -547,6 +571,26 @@ html:not(.pr-diff-off) :is(.admonition, .tabbed-set, .highlight)[data-pr-diff] {
 <td>✅</td>
 </tr>
 <tr>
+<td><a href="clients/elevenlabs/">ElevenLabs (experimental)</a></td>
+<td>➖</td>
+<td>➖</td>
+<td>➖</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅</td>
+<td>➖</td>
+</tr>
+<tr>
+<td><a href="clients/gradium/">Gradium (experimental)</a></td>
+<td>➖</td>
+<td>➖</td>
+<td>➖</td>
+<td>✅</td>
+<td>✅</td>
+<td>✅</td>
+<td>➖</td>
+</tr>
+<tr>
 <td><a href="clients/openai-compatible/">OpenAI-Compatible</a></td>
 <td>✅</td>
 <td>✅</td>
@@ -562,6 +606,7 @@ html:not(.pr-diff-off) :is(.admonition, .tabbed-set, .highlight)[data-pr-diff] {
 <li>❌ = the provider offers it, Padwan does not implement it yet.</li>
 <li>➖ = the provider has no such API (Gemini transcribes through chat audio input; Anthropic recommends Voyage AI for embeddings).</li>
 <li>➕ = depends on the endpoint: the request is sent in OpenAI's wire format; support is up to the server.</li>
+<li>Realtime: Gradium's is speech-to-speech translation, not a voice-agent session; ElevenLabs and Gradium also stream TTS and STT over WebSocket.</li>
 </ul>
 <h2 id="quick-example">Quick Example</h2>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a href="#__codelineno-0-1" id="__codelineno-0-1" name="__codelineno-0-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">OPENAI_API_KEY</span><span class="o">=</span><span class="s2">"sk-..."</span>
