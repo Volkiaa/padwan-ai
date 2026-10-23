@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792769805686,
+  "lastUpdate": 1792769958940,
   "repoUrl": "https://github.com/polarsen-io/padwan-ai",
   "entries": {
     "Import Performance": [
@@ -4128,6 +4128,66 @@ window.BENCHMARK_DATA = {
             "value": 254.93,
             "unit": "ms",
             "range": 6.93
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "julien.brayere@obitrain.com",
+            "name": "Julien Brayere",
+            "username": "Andarius"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a882553eee1b4ca1cdf7dd5e1c13e72200ef5ca1",
+          "message": "feat(gradium): add streaming, realtime TTS/STT/S2S and voice management (#119)\n\n* feat(gradium): add streaming, realtime TTS/STT/S2S and voice management\n\nStreaming TTS over REST, WebSocket TTS, STT and speech-to-speech translation\nclients, and voice management (list, get, clone, update, delete).\nMark the Gradium and ElevenLabs clients as experimental.\n\n* fix(gradium): share the hardened stream pump and register otel provider\n\nGradium realtime streams use WsConnection.pump (sender always awaited, early\nserver close raises) with aclosing for nested generators; register gradium as an\notel provider name and footnote the Realtime matrix cell.\n\n* fix(gradium): keep the shared status checks, bound the ready handshake, never resend a POST\n\n- json_config is a JSON string, 429 maps to TooManyRequestsError, malformed NDJSON raises LLMError (as in #117)\n- POSTs bill or create voices, so Gradium retries them on connection errors only; GET/PUT/DELETE keep 502-504\n- the ready wait uses WsConnection.wait_for with the client timeout instead of blocking forever\n- send_audio is append_audio, as on the ElevenLabs, OpenAI and Gemini STT connections\n- the upgrade check, the sync-iterable adapter and the API-key auth mixin are shared with ElevenLabs\n- the voice e2e test is opt-in (paid); transcribe takes file= keyword-only",
+          "timestamp": "2026-10-23T17:38:06+02:00",
+          "tree_id": "2ae71000d73130759f5426bc04dda2115d56c4cb",
+          "url": "https://github.com/polarsen-io/padwan-ai/commit/a882553eee1b4ca1cdf7dd5e1c13e72200ef5ca1"
+        },
+        "date": 1792769957490,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "3.13 · padwan_ai (facade)",
+            "value": 241.55,
+            "unit": "ms",
+            "range": 2.54
+          },
+          {
+            "name": "3.13 · padwan_ai.openai",
+            "value": 245.01,
+            "unit": "ms",
+            "range": 2.41
+          },
+          {
+            "name": "3.13 · padwan_ai.otel",
+            "value": 260.87,
+            "unit": "ms",
+            "range": 3.61
+          },
+          {
+            "name": "3.15 · padwan_ai (facade)",
+            "value": 54.51,
+            "unit": "ms",
+            "range": 0.91
+          },
+          {
+            "name": "3.15 · padwan_ai.openai",
+            "value": 202.86,
+            "unit": "ms",
+            "range": 3.55
+          },
+          {
+            "name": "3.15 · padwan_ai.otel",
+            "value": 237.51,
+            "unit": "ms",
+            "range": 2.91
           }
         ]
       }
