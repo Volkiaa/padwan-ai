@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792761670487,
+  "lastUpdate": 1792761785313,
   "repoUrl": "https://github.com/polarsen-io/padwan-ai",
   "entries": {
     "Import Performance": [
@@ -3768,6 +3768,66 @@ window.BENCHMARK_DATA = {
             "value": 226.04,
             "unit": "ms",
             "range": 3.81
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "julien.brayere@obitrain.com",
+            "name": "Julien Brayere",
+            "username": "Andarius"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "163cbee24784da3326bf501cbb63bb42ef16632a",
+          "message": "docs(agents): a new case of an existing behaviour extends its parametrized test (#134)",
+          "timestamp": "2026-10-23T15:21:57+02:00",
+          "tree_id": "9c4d32994e83a1378804d5873247e5267c8356cc",
+          "url": "https://github.com/polarsen-io/padwan-ai/commit/163cbee24784da3326bf501cbb63bb42ef16632a"
+        },
+        "date": 1792761782920,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "3.13 · padwan_ai (facade)",
+            "value": 223.68,
+            "unit": "ms",
+            "range": 4.69
+          },
+          {
+            "name": "3.13 · padwan_ai.openai",
+            "value": 226.85,
+            "unit": "ms",
+            "range": 3.85
+          },
+          {
+            "name": "3.13 · padwan_ai.otel",
+            "value": 232.65,
+            "unit": "ms",
+            "range": 8.19
+          },
+          {
+            "name": "3.15 · padwan_ai (facade)",
+            "value": 52.15,
+            "unit": "ms",
+            "range": 1.17
+          },
+          {
+            "name": "3.15 · padwan_ai.openai",
+            "value": 188.47,
+            "unit": "ms",
+            "range": 2.86
+          },
+          {
+            "name": "3.15 · padwan_ai.otel",
+            "value": 226.99,
+            "unit": "ms",
+            "range": 3.94
           }
         ]
       }
