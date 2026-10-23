@@ -2,6 +2,8 @@ from contextlib import nullcontext
 
 import pytest
 
+from padwan_ai._base import RETRY_AFTER_MAX
+from padwan_ai.anthropic.client import AnthropicClient
 from padwan_ai.client import LLMClient
 from padwan_ai.conversation import (
     ConversationState,
@@ -15,6 +17,7 @@ from padwan_ai.mistral.client import MistralClient, is_mistral_model
 from padwan_ai.models import ChatResponse, ToolCall, ToolCallFunction, UsageToken
 from padwan_ai.openai.client import OpenAIClient, is_openai_model
 from padwan_ai.openai.realtime import OpenAIRealtimeClient
+from padwan_ai.typesafe.client import TypeSafeClient
 from padwan_ai.voyage.client import VoyageClient, is_voyage_model
 
 # ConversationState
@@ -452,3 +455,18 @@ async def test_session_lifecycle():
     async with client as c:
         assert c._session is not None
     assert c._session is None
+
+
+@pytest.mark.parametrize(
+    "client_cls",
+    [
+        pytest.param(OpenAIClient, id="openai"),
+        pytest.param(AnthropicClient, id="anthropic"),
+        pytest.param(GeminiClient, id="gemini"),
+        pytest.param(TypeSafeClient, id="typesafe"),
+    ],
+)
+def test_retry_after_wait_is_capped(client_cls):
+    """A long Retry-After never makes an in-session retry sleep past the cap."""
+    retry = client_cls(api_key="k")._retry
+    assert retry.parse_retry_after("1200") == RETRY_AFTER_MAX

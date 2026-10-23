@@ -15,7 +15,7 @@ import niquests
 from urllib3 import AsyncHTTPResponse
 from urllib3.util.retry import Retry
 
-from .._base import ChatStream, LLMClientBase, Provider, env_api_key
+from .._base import RETRY_AFTER_MAX, ChatStream, LLMClientBase, Provider, env_api_key
 from .._json import loads as _json_loads
 from ..content import ContentPart
 from ..conversation import AssistantToolMessage, ChatMessage, ToolResultMessage
@@ -271,6 +271,7 @@ class GeminiClient(_GeminiAuth, LLMClientBase[GeminiRetry], GeminiToolMixin):
             backoff_factor=0.5,
             status_forcelist=[500, 502, 503, 504],
             allowed_methods=["POST"],
+            retry_after_max=RETRY_AFTER_MAX,
             cache_response_body=True,
         )
     )

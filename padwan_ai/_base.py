@@ -58,6 +58,9 @@ PADWAN_API_KEY_ENV = "PADWAN_API_KEY"
 DEFAULT_RETRY_DELAY = 60
 """Seconds to wait after a 429 whose ``Retry-After`` is absent or unreadable."""
 
+RETRY_AFTER_MAX = 30
+"""Longest ``Retry-After`` (seconds) an in-session retry sleeps; the error carries the real value."""
+
 
 def retry_after_delay(retry_after: str | None) -> int:
     """Seconds to wait from a ``Retry-After`` header (seconds or HTTP date), at least 1."""

@@ -58,6 +58,10 @@ async with OpenAIClient(
 
 Passing a model a provider has scheduled for retirement emits a one-time `ModelDeprecationWarning` (a `FutureWarning`); the model keeps working until retirement.
 
+### Retries and rate limits
+
+Clients retry transient failures (connection errors, 5xx) with a short backoff. A 429 or 503 carrying `Retry-After` is retried in place only while that header stays under 30 seconds per attempt; once retries are spent, the request raises `TooManyRequestsError` whose `retry_delay` is the server's full `Retry-After`, so a long rate-limit window surfaces after a few capped waits instead of blocking the call for its whole duration.
+
 ### Environment Variables
 
 Each provider looks for its API key in environment variables:

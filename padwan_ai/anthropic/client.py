@@ -11,7 +11,7 @@ from typing import ClassVar, Literal, cast, get_args
 import niquests
 from urllib3.util.retry import Retry
 
-from .._base import ChatStream, LLMClientBase, env_api_key
+from .._base import RETRY_AFTER_MAX, ChatStream, LLMClientBase, env_api_key
 from ..conversation import AssistantToolMessage, ChatMessage, ToolResultMessage
 from ..errors import LLMError, Provider, TooManyRequestsError
 from ..models import (
@@ -158,6 +158,7 @@ class AnthropicClient(LLMClientBase[Retry], AnthropicToolMixin):
             backoff_factor=0.5,
             status_forcelist=[500, 502, 503, 504, 529],
             allowed_methods=["POST"],
+            retry_after_max=RETRY_AFTER_MAX,
         )
     )
 
