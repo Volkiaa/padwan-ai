@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792758963744,
+  "lastUpdate": 1792760963829,
   "repoUrl": "https://github.com/polarsen-io/padwan-ai",
   "entries": {
     "Import Performance": [
@@ -3588,6 +3588,66 @@ window.BENCHMARK_DATA = {
             "value": 229.46,
             "unit": "ms",
             "range": 13.85
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "carlo.abichahine@gmail.com",
+            "name": "Carlo Abi Chahine",
+            "username": "cabichahine"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ab8e1fe358569c482ed14b7b4f8e8d01375b39e5",
+          "message": "feat(openai): transcribe takes extra_params for provider-only form fields (#129)\n\n* feat(openai): transcribe takes extra_params for provider-only form fields\n\nA gateway reads its trace fields (LiteLLM's metadata, as a JSON string) from\nthe multipart form, which transcribe had no way to add to.\n\n* feat(openai): transcribe extra_params accepts pairs to repeat a form field\n\n---------\n\nCo-authored-by: julien <julien.brayere@obitrain.com>",
+          "timestamp": "2026-10-23T15:08:24+02:00",
+          "tree_id": "a958f8b196e56b5e99824bd6d1210420ad087974",
+          "url": "https://github.com/polarsen-io/padwan-ai/commit/ab8e1fe358569c482ed14b7b4f8e8d01375b39e5"
+        },
+        "date": 1792760962875,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "3.13 · padwan_ai (facade)",
+            "value": 215.97,
+            "unit": "ms",
+            "range": 3.6
+          },
+          {
+            "name": "3.13 · padwan_ai.openai",
+            "value": 219.53,
+            "unit": "ms",
+            "range": 5.72
+          },
+          {
+            "name": "3.13 · padwan_ai.otel",
+            "value": 230.89,
+            "unit": "ms",
+            "range": 3.47
+          },
+          {
+            "name": "3.15 · padwan_ai (facade)",
+            "value": 52.67,
+            "unit": "ms",
+            "range": 0.9
+          },
+          {
+            "name": "3.15 · padwan_ai.openai",
+            "value": 191.67,
+            "unit": "ms",
+            "range": 2.32
+          },
+          {
+            "name": "3.15 · padwan_ai.otel",
+            "value": 233.91,
+            "unit": "ms",
+            "range": 2.39
           }
         ]
       }
