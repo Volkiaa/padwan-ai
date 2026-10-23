@@ -410,8 +410,9 @@ It has its own evaluation interface; use it directly rather than <code>LLMClient
 The client defaults to <code>model="jev-latest"</code>, <code>timeout=60</code>, and
 <code>base_url="https://api.typesafe.ai/v1/"</code>. The client does not load <code>.env</code> itself.</p>
 <p>Requests use niquests' built-in retry handling: up to two retries for connection
-errors, timeouts, HTTP 408/429, and 5xx responses, respecting <code>Retry-After</code>.
-Exhausted rate limits raise <code>TooManyRequestsError</code>; other provider errors raise
+errors, timeouts, HTTP 408/429, and 5xx responses, respecting <code>Retry-After</code> up to
+30 seconds per attempt. Exhausted rate limits raise <code>TooManyRequestsError</code> whose
+<code>retry_delay</code> is the server's full <code>Retry-After</code>; other provider errors raise
 <code>LLMError</code> with <code>provider="typesafe"</code>.</p>
 <h2 id="evaluate-several-questions">Evaluate several questions</h2>
 <div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a href="#__codelineno-0-1" id="__codelineno-0-1" name="__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">padwan_ai</span><span class="w"> </span><span class="kn">import</span> <span class="n">TypeSafeClient</span>
