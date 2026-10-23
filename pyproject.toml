@@ -1,7 +1,7 @@
 [project]
 name = "padwan-ai"
 version = "0.15.0"
-description = "Lightweight async client for OpenAI, Gemini, Mistral, Grok, Anthropic, Voyage, ElevenLabs, Gradium, TypeSafe (experimental) and any OpenAI-compatible API."
+description = "Lightweight async client for OpenAI, Gemini, Mistral, Grok, Anthropic, Voyage, ElevenLabs (experimental), Gradium (experimental), TypeSafe (experimental) and any OpenAI-compatible API."
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]

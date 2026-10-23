@@ -144,6 +144,8 @@ class ElevenLabsSpeech:
 class ElevenLabsClient(StandaloneClientMixin):
     """Async client for ElevenLabs text-to-speech and speech-to-text.
 
+    Experimental: the interface and typed payloads may change between minor releases.
+
     https://elevenlabs.io/docs/api-reference
     """
 

@@ -4,6 +4,9 @@ icon: lucide/audio-waveform
 
 # Gradium Client
 
+!!! warning "Experimental"
+    The Gradium client is experimental: its interface and typed payloads may change between minor releases without a deprecation cycle.
+
 [Gradium](https://gradium.ai) is a speech provider: low-latency text-to-speech and speech-to-text in English, French,
 German, Spanish and Portuguese. `GradiumClient` is standalone like the [ElevenLabs client](elevenlabs.md): it is not an
 `LLMClientBase` subclass and `LLMClient` does not route to it. It covers the REST endpoints; WebSocket streaming is not

@@ -1,6 +1,6 @@
 # Padwan AI
 
-Lightweight async client for OpenAI, Gemini, Mistral, Grok, Anthropic, TypeSafe (JEV, experimental), and any OpenAI-compatible API.
+Lightweight async client for OpenAI, Gemini, Mistral, Grok, Anthropic, ElevenLabs (experimental), Gradium (experimental), TypeSafe (JEV, experimental), and any OpenAI-compatible API.
 
 ## Why
 
@@ -34,8 +34,8 @@ Most LLM client libraries pull in heavy dependencies (pydantic, httpx) and lock 
 | Grok     | ✅   | ✅        | ✅    | ✅       | ➖            | ❌  | ➖         |
 | Anthropic | ✅  | ✅        | ❌    | ➖       | ➖            | ➖  | ➖         |
 | [Voyage AI](clients/voyage.md) | ➖ | ➖ | ➖ | ➖ | ➖ | ➖ | ✅ |
-| [ElevenLabs](clients/elevenlabs.md) | ➖ | ➖ | ➖ | ❌ | ✅ | ✅ | ➖ |
-| [Gradium](clients/gradium.md) | ➖ | ➖ | ➖ | ❌ | ✅ | ✅ | ➖ |
+| [ElevenLabs (experimental)](clients/elevenlabs.md) | ➖ | ➖ | ➖ | ❌ | ✅ | ✅ | ➖ |
+| [Gradium (experimental)](clients/gradium.md) | ➖ | ➖ | ➖ | ❌ | ✅ | ✅ | ➖ |
 | [OpenAI-Compatible](clients/openai-compatible.md) | ✅ | ✅ | ➕ | ➕ | ➕ | ❌ | ➕ |
 
 - ❌ = the provider offers it, Padwan does not implement it yet.

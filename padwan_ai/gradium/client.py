@@ -141,6 +141,8 @@ def _parse_transcription(body: str) -> GradiumTranscription:
 class GradiumClient(StandaloneClientMixin):
     """Async client for Gradium text-to-speech and speech-to-text (REST).
 
+    Experimental: the interface and typed payloads may change between minor releases.
+
     https://docs.gradium.ai/api-reference/introduction
     """
 

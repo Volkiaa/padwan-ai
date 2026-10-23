@@ -5,7 +5,7 @@
 <h1 align="center">Padwan AI</h1>
 
 <p align="center">
-  Lightweight async client for OpenAI, Gemini, Mistral, Grok, Anthropic, TypeSafe (JEV, experimental), and any OpenAI-compatible API.<br>
+  Lightweight async client for OpenAI, Gemini, Mistral, Grok, Anthropic, ElevenLabs (experimental), Gradium (experimental), TypeSafe (JEV, experimental), and any OpenAI-compatible API.<br>
   One HTTP dependency (<a href="https://github.com/jawah/niquests">niquests</a>, plus its qh3/urllib3-future stack), TypedDict everywhere, HTTP/2 and HTTP/3 out of the box.
 </p>
 
@@ -104,8 +104,8 @@ For an interactive chat TUI use [`padwan-cli`](https://github.com/polarsen-io/pa
 | Mistral | ✅ | ❌ | ❌ | ✅ | ❌ | ✅ |
 | Grok | ✅ | ✅ | ✅ | ➖ | ❌ | ➖ |
 | Voyage AI | ➖ | ➖ | ➖ | ➖ | ➖ | ✅ |
-| ElevenLabs | ➖ | ➖ | ❌ | ✅ | ✅ | ➖ |
-| Gradium | ➖ | ➖ | ❌ | ✅ | ✅ | ➖ |
+| ElevenLabs (experimental) | ➖ | ➖ | ❌ | ✅ | ✅ | ➖ |
+| Gradium (experimental) | ➖ | ➖ | ❌ | ✅ | ✅ | ➖ |
 | OpenAI-compatible (`base_url=`) | ✅ | depends on the server | depends on the server | depends on the server | ❌ | depends on the server |
 
 - ❌ = the provider offers it, not implemented yet.
