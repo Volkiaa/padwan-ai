@@ -21,6 +21,8 @@ _BLOCKS = {"p", "li", "tr", "h1", "h2", "h3", "h4", "h5", "h6", "pre", "dt", "dd
 _COMPONENTS = ("admonition", "tabbed-set", "highlight")
 # Blocks at least this similar count as edited rather than added + removed.
 _EDIT_RATIO = 0.5
+# gh-pages folders that are not the site: previews, and perf.yml's benchmark history.
+_NOT_SITE = ("pr-preview/", "dev/")
 
 _HERE = Path(__file__).parent
 
@@ -178,7 +180,7 @@ def mark_site(base_dir: Path, preview_dir: Path) -> tuple[list[PageDiff], list[s
     removed = sorted(
         p.relative_to(base_dir).as_posix().removesuffix("index.html")
         for p in base_dir.rglob("index.html")
-        if not p.relative_to(base_dir).as_posix().startswith("pr-preview/")
+        if not p.relative_to(base_dir).as_posix().startswith(_NOT_SITE)
         and not (preview_dir / p.relative_to(base_dir)).exists()
     )
     return sorted(changed, key=lambda d: d.route), removed

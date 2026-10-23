@@ -109,8 +109,13 @@ def test_site_badges_relative_sidebar_links(
     """Material sidebar links are relative to the page; the badge and its style land on every page."""
     nav = '<nav><a class="md-nav__link" href="../a/">A</a><a class="md-nav__link" href="../b/">B</a></nav>'
     for root, a_text in ((tmp_path / "prod", "old"), (tmp_path / "preview", "new")):
-        for page, text in (("a", a_text), ("b", "same"), ("gone", "bye")):
-            if page == "gone" and root.name == "preview":
+        for page, text in (
+            ("a", a_text),
+            ("b", "same"),
+            ("gone", "bye"),
+            ("dev/bench", "perf"),
+        ):
+            if page in ("gone", "dev/bench") and root.name == "preview":
                 continue
             (root / page).mkdir(parents=True)
             (root / page / "index.html").write_text(
@@ -118,7 +123,7 @@ def test_site_badges_relative_sidebar_links(
             )
     changed, removed = mark_changes.mark_site(tmp_path / "prod", tmp_path / "preview")
     assert [d.route for d in changed] == ["a/"]
-    assert removed == ["gone/"]
+    assert removed == ["gone/"]  # dev/bench is the benchmark history, not a page
     unchanged = (tmp_path / "preview" / "b" / "index.html").read_text()
     assert unchanged.count('<span class="pr-diff-badge">') == 1
     assert unchanged.count('<style id="pr-diff">') == 1
