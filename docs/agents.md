@@ -108,7 +108,7 @@ With no `validator=`, `tool()` follows the annotations: a `msgspec.Meta` constra
 or `Struct` type picks msgspec, a `pydantic.Field` constraint or `BaseModel` type
 picks pydantic.
 
-=== "msgspec"
+=== ":msgspec: msgspec"
 
     ```python
     from typing import Annotated
@@ -130,7 +130,7 @@ picks pydantic.
     search_tool = tool(search)  # `limit` carries minimum/maximum in the schema
     ```
 
-=== "pydantic"
+=== ":simple-pydantic: pydantic"
 
     ```python
     from typing import Annotated
