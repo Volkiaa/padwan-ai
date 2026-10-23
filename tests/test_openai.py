@@ -717,12 +717,13 @@ class TestBatchJobProperties:
 
 
 @pytest.mark.parametrize(
-    "extra_params, expected_extra",
+    "extra_params, expected_extra, expectation",
     [
-        pytest.param(None, [], id="none"),
+        pytest.param(None, [], nullcontext(), id="none"),
         pytest.param(
             {"metadata": '{"trace_user_id": "42"}'},
             [("metadata", '{"trace_user_id": "42"}')],
+            nullcontext(),
             id="gateway-metadata",
         ),
         pytest.param(
@@ -734,23 +735,34 @@ class TestBatchJobProperties:
                 ("timestamp_granularities[]", "word"),
                 ("timestamp_granularities[]", "segment"),
             ],
+            nullcontext(),
             id="repeated-field-pairs",
+        ),
+        pytest.param(
+            {"model": "gpt-4o-transcribe", "file": "x", "metadata": "{}"},
+            None,
+            pytest.raises(ValueError, match="file, model"),
+            id="named-argument-collision",
         ),
     ],
 )
 async def test_transcribe_adds_extra_form_fields(
-    make_resp, extra_params, expected_extra
+    make_resp, extra_params, expected_extra, expectation
 ):
     client = MagicMock(spec=OpenAIClient)
     client.provider = "openai"
     client.session = AsyncMock()
     client.session.post.return_value = make_resp(200, {"text": "ok"})
 
-    await OpenAIClient.transcribe(
-        client, file=b"RIFF", filename="clip.wav", extra_params=extra_params
-    )
+    with expectation:
+        await OpenAIClient.transcribe(
+            client, file=b"RIFF", filename="clip.wav", extra_params=extra_params
+        )
 
-    assert client.session.post.call_args.kwargs["data"] == [
-        ("model", "whisper-1"),
-        *expected_extra,
-    ]
+    if expected_extra is None:
+        client.session.post.assert_not_called()
+    else:
+        assert client.session.post.call_args.kwargs["data"] == [
+            ("model", "whisper-1"),
+            *expected_extra,
+        ]
