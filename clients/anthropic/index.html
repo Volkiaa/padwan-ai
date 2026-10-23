@@ -645,6 +645,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#messages-compatibility-over-gemini" class="md-nav__link">
+    <span class="md-ellipsis">
+      <span class="md-typeset">
+        Messages compatibility over Gemini
+      </span>
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1013,6 +1024,52 @@ the answer text.</p>
 </span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="n">usage</span> <span class="o">=</span> <span class="n">stream</span><span class="o">.</span><span class="n">usage</span>
 </span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="n">tool_calls</span> <span class="o">=</span> <span class="n">stream</span><span class="o">.</span><span class="n">tool_calls</span>
 </span></code></pre></div>
+<h2 id="messages-compatibility-over-gemini">Messages compatibility over Gemini</h2>
+<p>Like <code>anthropic.compat.messages_to_openai</code> and <code>anthropic.events</code>, the
+<code>anthropic.gemini_compat</code> module translates Messages requests and responses
+without running an HTTP server.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">padwan_ai.anthropic.gemini_compat</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>    <span class="n">gemini_response_to_anthropic</span><span class="p">,</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    <span class="n">gemini_stream_to_anthropic</span><span class="p">,</span>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    <span class="n">messages_to_gemini</span><span class="p">,</span>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="p">)</span>
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="kn">from</span><span class="w"> </span><span class="nn">padwan_ai.anthropic.models</span><span class="w"> </span><span class="kn">import</span> <span class="n">AnthropicCompatBody</span>
+</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="kn">from</span><span class="w"> </span><span class="nn">padwan_ai.gemini</span><span class="w"> </span><span class="kn">import</span> <span class="n">GeminiClient</span>
+</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>
+</span><span id="__span-7-9"><a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="n">body</span><span class="p">:</span> <span class="n">AnthropicCompatBody</span> <span class="o">=</span> <span class="p">{</span>
+</span><span id="__span-7-10"><a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>    <span class="s2">"model"</span><span class="p">:</span> <span class="s2">"claude-sonnet-5"</span><span class="p">,</span>
+</span><span id="__span-7-11"><a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a>    <span class="s2">"max_tokens"</span><span class="p">:</span> <span class="mi">1024</span><span class="p">,</span>
+</span><span id="__span-7-12"><a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a>    <span class="s2">"messages"</span><span class="p">:</span> <span class="p">[{</span><span class="s2">"role"</span><span class="p">:</span> <span class="s2">"user"</span><span class="p">,</span> <span class="s2">"content"</span><span class="p">:</span> <span class="s2">"Hello!"</span><span class="p">}],</span>
+</span><span id="__span-7-13"><a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a><span class="p">}</span>
+</span><span id="__span-7-14"><a id="__codelineno-7-14" name="__codelineno-7-14" href="#__codelineno-7-14"></a><span class="n">request</span> <span class="o">=</span> <span class="n">messages_to_gemini</span><span class="p">(</span><span class="n">body</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="s2">"gemini-2.5-flash"</span><span class="p">)</span>
+</span><span id="__span-7-15"><a id="__codelineno-7-15" name="__codelineno-7-15" href="#__codelineno-7-15"></a><span class="k">async</span> <span class="k">with</span> <span class="n">GeminiClient</span><span class="p">()</span> <span class="k">as</span> <span class="n">client</span><span class="p">:</span>
+</span><span id="__span-7-16"><a id="__codelineno-7-16" name="__codelineno-7-16" href="#__codelineno-7-16"></a>    <span class="n">data</span><span class="p">,</span> <span class="n">usage</span> <span class="o">=</span> <span class="k">await</span> <span class="n">client</span><span class="o">.</span><span class="n">complete</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+</span><span id="__span-7-17"><a id="__codelineno-7-17" name="__codelineno-7-17" href="#__codelineno-7-17"></a>    <span class="n">response</span> <span class="o">=</span> <span class="n">gemini_response_to_anthropic</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="n">body</span><span class="p">[</span><span class="s2">"model"</span><span class="p">])</span>
+</span><span id="__span-7-18"><a id="__codelineno-7-18" name="__codelineno-7-18" href="#__codelineno-7-18"></a>
+</span><span id="__span-7-19"><a id="__codelineno-7-19" name="__codelineno-7-19" href="#__codelineno-7-19"></a>    <span class="k">async</span> <span class="k">for</span> <span class="n">event_name</span><span class="p">,</span> <span class="n">payload</span> <span class="ow">in</span> <span class="n">gemini_stream_to_anthropic</span><span class="p">(</span>
+</span><span id="__span-7-20"><a id="__codelineno-7-20" name="__codelineno-7-20" href="#__codelineno-7-20"></a>        <span class="n">client</span><span class="o">.</span><span class="n">stream</span><span class="p">(</span><span class="n">request</span><span class="p">),</span> <span class="n">model</span><span class="o">=</span><span class="n">body</span><span class="p">[</span><span class="s2">"model"</span><span class="p">]</span>
+</span><span id="__span-7-21"><a id="__codelineno-7-21" name="__codelineno-7-21" href="#__codelineno-7-21"></a>    <span class="p">):</span>
+</span><span id="__span-7-22"><a id="__codelineno-7-22" name="__codelineno-7-22" href="#__codelineno-7-22"></a>        <span class="o">...</span>  <span class="c1"># The server serializes these pairs as SSE frames.</span>
+</span></code></pre></div>
+<p>The converted <code>model</code> selects the client endpoint and is removed from the
+HTTP body. An explicit <code>complete(..., model=...)</code> or <code>stream(..., model=...)</code>
+argument takes precedence.</p>
+<p>Tool <code>input_schema</code>s are sent as <code>parametersJsonSchema</code>, so JSON Schema keywords
+Gemini's OpenAPI-style <code>parameters</code> lacks (<code>$schema</code>, <code>additionalProperties</code>,
+<code>$ref</code>) pass through untouched. Keep returned tool IDs unchanged when replaying assistant calls and user
+results: signed Gemini function calls carry their signatures in those opaque
+IDs. Parallel results stay together in one user turn; unmatched results raise
+<code>ValueError</code>. Anthropic thinking blocks and thinking configuration are not
+replayed. Signatures attached to non-function parts are not preserved. Base64
+images and PDF documents become <code>inlineData</code> parts; images and documents inside
+a tool result follow its <code>functionResponse</code>, and <code>is_error</code> results are sent as
+<code>{"error": &lt;text&gt;}</code>. Remote URL sources and server tools are dropped with a
+warning.</p>
+<p><code>MAX_TOKENS</code> reports <code>max_tokens</code> even when the turn has function calls.
+Finish reasons without an Anthropic equivalent (<code>MALFORMED_FUNCTION_CALL</code>,
+<code>UNEXPECTED_TOOL_CALL</code>, ...) report <code>end_turn</code> and log a warning. Gemini does
+not say which stop sequence matched, so those stops report <code>end_turn</code> with a
+null <code>stop_sequence</code>.</p>
 
 
 
