@@ -586,6 +586,10 @@ class OpenAIChatStream(ChatStream, OpenAIToolMixin):
         return None
 
 
+_TRANSCRIBE_FIELDS = frozenset({"file", "model", "language", "prompt", "temperature"})
+"""Form fields `transcribe` sets from its own arguments."""
+
+
 @dataclasses.dataclass
 class OpenAIClient(_OpenAIBase):
     """OpenAI API client with chat and batch support."""
@@ -610,7 +614,8 @@ class OpenAIClient(_OpenAIBase):
         ``prompt`` steers spelling and vocabulary; ``headers`` are sent with this
         request only, as in `complete`. ``extra_params`` adds form fields for
         provider-only parameters (e.g. a gateway's ``metadata``, as a JSON string);
-        pass pairs to repeat a field (e.g. ``timestamp_granularities[]``).
+        pass pairs to repeat a field (e.g. ``timestamp_granularities[]``). A field
+        that has a named argument here raises ``ValueError``: use the argument.
         """
         if isinstance(file, bytes) and not filename:
             raise ValueError("filename is required with raw bytes")
@@ -623,11 +628,16 @@ class OpenAIClient(_OpenAIBase):
         if temperature is not None:
             data.append(("temperature", str(temperature)))
         if extra_params:
-            data.extend(
+            extra = list(
                 extra_params.items()
                 if isinstance(extra_params, Mapping)
                 else extra_params
             )
+            if clash := _TRANSCRIBE_FIELDS & {name for name, _ in extra}:
+                raise ValueError(
+                    f"extra_params sets named arguments: {', '.join(sorted(clash))}"
+                )
+            data.extend(extra)
         resp = await self.session.post(
             "/audio/transcriptions",
             files=[("file", audio)],
