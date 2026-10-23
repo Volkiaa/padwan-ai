@@ -1,11 +1,13 @@
 import dataclasses
 import json
+from collections.abc import AsyncGenerator
 from dataclasses import field
 from functools import partial
 from pathlib import Path
-from typing import ClassVar, Literal, NotRequired, TypedDict
+from typing import Any, ClassVar, Literal, NotRequired, TypedDict, cast
 
 import niquests
+from niquests.typing import MultiPartFilesType
 from urllib3.util.retry import Retry
 
 from .._base import StandaloneClientMixin, env_api_key, standalone_retry
@@ -28,6 +30,7 @@ GradiumOutputFormat = Literal[
 ]
 GradiumInputFormat = Literal["wav", "pcm", "opus"]
 GradiumLanguage = Literal["en", "fr", "de", "es", "pt", "any"]
+GradiumVoiceLanguage = Literal["en", "fr", "de", "es", "pt"]
 
 GRADIUM_ENDPOINT = "https://api.gradium.ai/api/"
 
@@ -43,6 +46,9 @@ __all__ = (
     "GradiumSTTConfig",
     "GradiumTranscription",
     "GradiumTTSConfig",
+    "GradiumVoice",
+    "GradiumVoiceLanguage",
+    "GradiumVoiceTag",
 )
 
 # Content-Type selects the STT input format; .wav guesses to audio/x-wav, which the API rejects
@@ -90,6 +96,35 @@ class _SpeechBody(TypedDict):
     model_name: str
     json_config: NotRequired[str]
     """`GradiumTTSConfig` serialized: the API takes this field as a JSON string."""
+
+
+class _VoiceUpdate(TypedDict, total=False):
+    name: str
+    description: str
+    language: GradiumVoiceLanguage
+    start_s: float
+
+
+class GradiumVoiceTag(TypedDict):
+    value: str
+    category: NotRequired[str | None]
+
+
+class GradiumVoice(TypedDict):
+    """A voice from `voices/`; catalog voices have `is_catalog` set."""
+
+    uid: str
+    name: str
+    description: NotRequired[str | None]
+    language: NotRequired[str | None]
+    filename: NotRequired[str | None]
+    start_s: NotRequired[float | None]
+    is_catalog: NotRequired[bool]
+    is_pro_clone: NotRequired[bool]
+    tags: NotRequired[list[GradiumVoiceTag]]
+
+
+type _Part = tuple[str, tuple[str | None, str | bytes] | tuple[str, bytes, str]]
 
 
 class GradiumSegment(TypedDict):
@@ -153,9 +188,13 @@ class GradiumClient(StandaloneClientMixin):
     api_key: str | None = field(default=None, repr=False)
     base_url: str = GRADIUM_ENDPOINT
     # no 500: the docs say pre-stream auth and input errors use it too
-    # Gradium reports its own failures as plain-text 500s, so those are not retried.
+    # Failures are plain-text 500s (not retried); POSTs bill or create voices, so only
+    # connection errors are retried for them.
     _retry: Retry = field(
-        default_factory=partial(standalone_retry, (502, 503, 504)), repr=False
+        default_factory=partial(
+            standalone_retry, (502, 503, 504), ("GET", "PUT", "DELETE")
+        ),
+        repr=False,
     )
     _api_key: str = field(init=False, repr=False)
     _session: niquests.AsyncSession | None = field(init=False, default=None, repr=False)
@@ -165,6 +204,30 @@ class GradiumClient(StandaloneClientMixin):
 
     def _set_auth_headers(self, session: niquests.AsyncSession) -> None:
         session.headers["x-api-key"] = self._api_key
+
+    def _speech_body(
+        self,
+        text: str,
+        voice_id: str | None,
+        model: str,
+        output_format: GradiumOutputFormat,
+        config: GradiumTTSConfig | None,
+    ) -> _SpeechBody:
+        voice = voice_id or self.voice_id
+        if not voice:
+            raise ValueError(
+                "voice_id is required (pass it or set GradiumClient.voice_id)"
+            )
+        body: _SpeechBody = {
+            "text": text,
+            "voice_id": voice,
+            "output_format": output_format,
+            "only_audio": True,
+            "model_name": model,
+        }
+        if config:
+            body["json_config"] = json.dumps(config)
+        return body
 
     async def generate_speech(
         self,
@@ -180,20 +243,7 @@ class GradiumClient(StandaloneClientMixin):
         The audio is requested whole (`only_audio`), so a failure after the response
         started comes back as truncated audio, not an error.
         """
-        voice = voice_id or self.voice_id
-        if not voice:
-            raise ValueError(
-                "voice_id is required (pass it or set GradiumClient.voice_id)"
-            )
-        body: _SpeechBody = {
-            "text": text,
-            "voice_id": voice,
-            "output_format": output_format,
-            "only_audio": True,
-            "model_name": model,
-        }
-        if config:
-            body["json_config"] = json.dumps(config)
+        body = self._speech_body(text, voice_id, model, output_format, config)
         resp = self._check_resp_status(
             await self.session.post("post/speech/tts", json=body)
         )
@@ -201,6 +251,108 @@ class GradiumClient(StandaloneClientMixin):
             audio=resp.content or b"",
             mime_type=resp.headers.get("content-type", "application/octet-stream"),
         )
+
+    async def stream_speech(
+        self,
+        text: str,
+        voice_id: str | None = None,
+        *,
+        model: str = "default",
+        output_format: GradiumOutputFormat = "wav",
+        config: GradiumTTSConfig | None = None,
+        chunk_size: int = 4096,
+    ) -> AsyncGenerator[bytes]:
+        """Like `generate_speech`, but yield audio chunks as the API produces them."""
+        body = self._speech_body(text, voice_id, model, output_format, config)
+        resp = await self.session.post("post/speech/tts", json=body, stream=True)
+        try:
+            resp = await self._check_stream_status(resp)
+            async for chunk in await resp.iter_content(chunk_size):
+                yield bytes(chunk)
+        finally:
+            await resp.close()
+
+    async def list_voices(self, *, include_catalog: bool = False) -> list[GradiumVoice]:
+        """Custom voices of the organization, plus the shared catalog with `include_catalog`."""
+        # limit=0 lifts the API's default page size of 100, as the SDK does
+        params = {"limit": "0", "include_catalog": str(include_catalog).lower()}
+        resp = self._check_resp_status(await self.session.get("voices/", params=params))
+        voices: list[GradiumVoice] = resp.json()
+        return voices
+
+    async def get_voice(self, voice_id: str) -> GradiumVoice:
+        resp = self._check_resp_status(await self.session.get(f"voices/{voice_id}"))
+        voice: GradiumVoice = resp.json()
+        return voice
+
+    async def clone_voice(
+        self,
+        name: str,
+        file: str | Path | bytes,
+        *,
+        language: GradiumVoiceLanguage,
+        description: str | None = None,
+        start_s: float | None = None,
+        input_format: str | None = None,
+    ) -> str:
+        """Create a custom voice from an audio sample and return its ID.
+
+        `start_s` picks where the sample starts; `input_format` (e.g. `wav`, `mp3`) is inferred from a path's suffix.
+        """
+        filename, audio, _ = await _read_audio(file)
+        fmt = input_format or Path(filename).suffix.lstrip(".").lower()
+        if not fmt:
+            raise ValueError("input_format is required for raw bytes")
+        # the SDK sends audio/<format>; mimetypes' audio/x-wav is rejected
+        parts: list[_Part] = [
+            ("audio_file", (f"{Path(filename).stem}.{fmt}", audio, f"audio/{fmt}")),
+            ("name", (None, name)),
+            ("language", (None, language)),
+            ("input_format", (None, fmt)),
+        ]
+        if description is not None:
+            parts.append(("description", (None, description)))
+        if start_s is not None:
+            parts.append(("start_s", (None, str(start_s))))
+        resp = await self.session.post(
+            "voices/", files=cast("MultiPartFilesType", parts)
+        )
+        created: dict[str, Any] = self._check_resp_status(resp).json()
+        if not (uid := created.get("uid")):
+            raise LLMError(
+                "gradium", created.get("error") or "voice creation failed", body=created
+            )
+        return uid
+
+    async def update_voice(
+        self,
+        voice_id: str,
+        *,
+        name: str | None = None,
+        description: str | None = None,
+        language: GradiumVoiceLanguage | None = None,
+        start_s: float | None = None,
+    ) -> GradiumVoice:
+        """Update the given fields of a custom voice and return it."""
+        body: _VoiceUpdate = {}
+        if name is not None:
+            body["name"] = name
+        if description is not None:
+            body["description"] = description
+        if language is not None:
+            body["language"] = language
+        if start_s is not None:
+            body["start_s"] = start_s
+        if not body:
+            raise ValueError("update_voice needs at least one field to change")
+        resp = self._check_resp_status(
+            await self.session.put(f"voices/{voice_id}", json=body)
+        )
+        voice: GradiumVoice = resp.json()
+        return voice
+
+    async def delete_voice(self, voice_id: str) -> None:
+        self._check_resp_status(await self.session.delete(f"voices/{voice_id}"))
 
     async def transcribe(
         self,

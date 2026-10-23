@@ -1,5 +1,12 @@
 import asyncio
-from collections.abc import AsyncGenerator, AsyncIterator, Awaitable, Callable, Mapping
+from collections.abc import (
+    AsyncGenerator,
+    AsyncIterator,
+    Awaitable,
+    Callable,
+    Iterable,
+    Mapping,
+)
 from dataclasses import dataclass
 from typing import Any
 
@@ -9,7 +16,31 @@ from ._json import dumps as _json_dumps, loads as _json_loads
 from .errors import LLMError, Provider
 from .logs import log
 
-__all__ = ("WsConnection",)
+__all__ = ("WsConnection", "aiter_items", "open_ws")
+
+
+async def aiter_items[T](items: Iterable[T]) -> AsyncIterator[T]:
+    """Adapt a sync iterable to the async one the send loops consume."""
+    for item in items:
+        yield item
+
+
+async def open_ws(
+    session: niquests.AsyncSession,
+    url: str,
+    *,
+    timeout: float,
+    provider: Provider,
+    params: Any = None,
+) -> Any:
+    """GET `url` as a WebSocket upgrade and return its extension; a plain HTTP reply raises `LLMError`."""
+    resp = await session.get(url, params=params, timeout=timeout)
+    if resp.extension is None:
+        raise LLMError(
+            provider,
+            f"handshake did not upgrade to a websocket (status {resp.status_code})",
+        )
+    return resp.extension
 
 
 @dataclass

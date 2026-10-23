@@ -11,10 +11,8 @@ from contextlib import aclosing, asynccontextmanager
 from dataclasses import dataclass, field
 from typing import Any, ClassVar, Literal, NotRequired, TypedDict
 
-import niquests
-
-from .._base import RealtimeClientBase, env_api_key
-from .._ws import WsConnection
+from .._base import ApiKeyWsAuth, RealtimeClientBase
+from .._ws import WsConnection, aiter_items
 from ..errors import LLMError, Provider, QuotaExceededError, TooManyRequestsError
 from .client import ElevenLabsOutputFormat, VoiceSettings
 
@@ -92,7 +90,7 @@ async def _word_chunks(
 ) -> AsyncIterator[str]:
     """Regroup token streams into chunks ending on a word boundary (as the SDK's `text_chunker`)."""
     if not isinstance(texts, AsyncIterable):
-        texts = _aiter(texts)
+        texts = aiter_items(texts)
     buffer = ""
     async for text in texts:
         if buffer.endswith(_SPLITTERS):
@@ -107,32 +105,10 @@ async def _word_chunks(
         yield buffer
 
 
-async def _aiter(texts: Iterable[str]) -> AsyncIterator[str]:
-    for text in texts:
-        yield text
-
-
-class _ElevenLabsWsAuth:
-    """Plain mixin, so `_api_key` stays the base dataclass's init=False field."""
-
+class _ElevenLabsWsAuth(ApiKeyWsAuth):
     provider: ClassVar[Provider] = "elevenlabs"
-    _api_key: str
-
-    def _get_default_api_key(self) -> str:
-        return env_api_key(self.provider, "ELEVENLABS_API_KEY")
-
-    def _set_auth_headers(self, session: niquests.AsyncSession) -> None:
-        session.headers["xi-api-key"] = self._api_key
-
-
-async def _open(client: RealtimeClientBase[Any], url: str, params: Any) -> Any:
-    resp = await client.session.get(url, params=params, timeout=client.timeout)
-    if resp.extension is None:
-        raise LLMError(
-            "elevenlabs",
-            f"handshake did not upgrade to a websocket (status {resp.status_code})",
-        )
-    return resp.extension
+    api_key_env: ClassVar[str] = "ELEVENLABS_API_KEY"
+    api_key_header: ClassVar[str] = "xi-api-key"
 
 
 @dataclass
@@ -178,7 +154,7 @@ class ElevenLabsRealtimeTTSClient(
     @asynccontextmanager
     async def _connect(self) -> AsyncIterator["ElevenLabsTTSConnection"]:
         url = f"{self.base_url}text-to-speech/{self.voice_id}/stream-input"
-        conn = ElevenLabsTTSConnection(await _open(self, url, self.connect_params()))
+        conn = ElevenLabsTTSConnection(await self._open_ws(url, self.connect_params()))
         try:
             await conn.send_event(self.init_payload())
             yield conn
@@ -279,8 +255,8 @@ class ElevenLabsRealtimeSTTClient(
 
     @asynccontextmanager
     async def _connect(self) -> AsyncIterator["ElevenLabsSTTConnection"]:
-        ext = await _open(
-            self, f"{self.base_url}speech-to-text/realtime", self.connect_params()
+        ext = await self._open_ws(
+            f"{self.base_url}speech-to-text/realtime", self.connect_params()
         )
         sample_rate = int(self.audio_format.rsplit("_", 1)[1])
         conn = ElevenLabsSTTConnection(ext, sample_rate=sample_rate)

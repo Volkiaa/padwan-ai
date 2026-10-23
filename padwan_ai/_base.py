@@ -344,6 +344,18 @@ class RealtimeClientBase[ConnT](abc.ABC):
             )
         return self._session
 
+    async def _open_ws(self, url: str, params: Any = None) -> Any:
+        """Upgrade `url` to a WebSocket within `timeout`; see `padwan_ai._ws.open_ws`."""
+        from ._ws import open_ws
+
+        return await open_ws(
+            self.session,
+            url,
+            timeout=self.timeout,
+            provider=self.provider,
+            params=params,
+        )
+
     async def __aenter__(self) -> ConnT:
         if self._session is not None:
             raise RuntimeError(
@@ -392,16 +404,34 @@ class RealtimeClientBase[ConnT](abc.ABC):
         ...
 
 
-def standalone_retry(statuses: Sequence[int] = (500, 502, 503, 504)) -> Retry:
-    """Retry connection errors and ``statuses`` on GET/POST, honouring ``Retry-After``; 429 surfaces as an error."""
+def standalone_retry(
+    statuses: Sequence[int] = (500, 502, 503, 504),
+    methods: Sequence[str] = ("GET", "POST"),
+) -> Retry:
+    """Retry connection errors, and ``statuses`` on ``methods``, honouring ``Retry-After``; 429 surfaces as an error."""
     return Retry(
         total=3,
         backoff_factor=0.5,
         status_forcelist=list(statuses),
-        allowed_methods=["GET", "POST"],
+        allowed_methods=list(methods),
         respect_retry_after_header=True,
         raise_on_status=False,
     )
+
+
+class ApiKeyWsAuth:
+    """Header API-key auth for realtime clients; a plain mixin so `_api_key` stays the base's init=False field."""
+
+    provider: ClassVar[Provider]
+    api_key_env: ClassVar[str]
+    api_key_header: ClassVar[str]
+    _api_key: str
+
+    def _get_default_api_key(self) -> str:
+        return env_api_key(self.provider, self.api_key_env)
+
+    def _set_auth_headers(self, session: niquests.AsyncSession) -> None:
+        session.headers[self.api_key_header] = self._api_key
 
 
 class StandaloneClientMixin:
