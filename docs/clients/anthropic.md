@@ -136,3 +136,56 @@ async for chunk in stream:
 usage = stream.usage
 tool_calls = stream.tool_calls
 ```
+
+## Messages compatibility over Gemini
+
+Like `anthropic.compat.messages_to_openai` and `anthropic.events`, the
+`anthropic.gemini_compat` module translates Messages requests and responses
+without running an HTTP server.
+
+```python
+from padwan_ai.anthropic.gemini_compat import (
+    gemini_response_to_anthropic,
+    gemini_stream_to_anthropic,
+    messages_to_gemini,
+)
+from padwan_ai.anthropic.models import AnthropicCompatBody
+from padwan_ai.gemini import GeminiClient
+
+body: AnthropicCompatBody = {
+    "model": "claude-sonnet-5",
+    "max_tokens": 1024,
+    "messages": [{"role": "user", "content": "Hello!"}],
+}
+request = messages_to_gemini(body, model="gemini-2.5-flash")
+async with GeminiClient() as client:
+    data, usage = await client.complete(request)
+    response = gemini_response_to_anthropic(data, model=body["model"])
+
+    async for event_name, payload in gemini_stream_to_anthropic(
+        client.stream(request), model=body["model"]
+    ):
+        ...  # The server serializes these pairs as SSE frames.
+```
+
+The converted `model` selects the client endpoint and is removed from the
+HTTP body. An explicit `complete(..., model=...)` or `stream(..., model=...)`
+argument takes precedence.
+
+Tool `input_schema`s are sent as `parametersJsonSchema`, so JSON Schema keywords
+Gemini's OpenAPI-style `parameters` lacks (`$schema`, `additionalProperties`,
+`$ref`) pass through untouched. Keep returned tool IDs unchanged when replaying assistant calls and user
+results: signed Gemini function calls carry their signatures in those opaque
+IDs. Parallel results stay together in one user turn; unmatched results raise
+`ValueError`. Anthropic thinking blocks and thinking configuration are not
+replayed. Signatures attached to non-function parts are not preserved. Base64
+images and PDF documents become `inlineData` parts; images and documents inside
+a tool result follow its `functionResponse`, and `is_error` results are sent as
+`{"error": <text>}`. Remote URL sources and server tools are dropped with a
+warning.
+
+`MAX_TOKENS` reports `max_tokens` even when the turn has function calls.
+Finish reasons without an Anthropic equivalent (`MALFORMED_FUNCTION_CALL`,
+`UNEXPECTED_TOOL_CALL`, ...) report `end_turn` and log a warning. Gemini does
+not say which stop sequence matched, so those stops report `end_turn` with a
+null `stop_sequence`.

@@ -283,12 +283,14 @@ class GeminiClient(_GeminiAuth, LLMClientBase[GeminiRetry], GeminiToolMixin):
         self, body: CompletionBody, model: str | None = None
     ) -> tuple[GenerateContentResponseDict, UsageToken]:
         """Fetch structured completion from Gemini."""
-        _model = model or self.model
+        _model = model or body.get("model") or self.model
         if not _model:
             raise LLMError(self.provider, "No model specified")
+        payload: CompletionBody = body.copy()
+        payload.pop("model", None)
         resp = await self.session.post(
             f"/models/{_model}:generateContent",
-            json=body,
+            json=payload,
         )
         data: GenerateContentResponseDict = _check_resp(resp)
 
@@ -541,24 +543,33 @@ class GeminiClient(_GeminiAuth, LLMClientBase[GeminiRetry], GeminiToolMixin):
             gen_config["thinkingConfig"] = self.thinking_config
         return gen_config
 
-    async def stream(self, body: StreamBody) -> AsyncIterator[dict]:
+    async def stream(
+        self, body: StreamBody, model: str | None = None
+    ) -> AsyncIterator[dict]:
         """Stream chat completions from Gemini, yielding response chunks as they arrive via SSE."""
-        if not self.model:
+        _model = model or body.get("model") or self.model
+        if not _model:
             raise LLMError(self.provider, "No model specified for streaming")
         _temperature = body.get("temperature", self.temperature)
 
         payload: dict = {
             "contents": body["contents"],
-            "generationConfig": self._build_gen_config(_temperature),
+            # Caller generationConfig keys win over the client defaults.
+            "generationConfig": {
+                **self._build_gen_config(_temperature),
+                **body.get("generationConfig", {}),
+            },
         }
         if system := body.get("systemInstruction"):
             payload["systemInstruction"] = system
         if gemini_tools := body.get("tools"):
             payload["tools"] = gemini_tools
+        if tool_config := body.get("toolConfig"):
+            payload["toolConfig"] = tool_config
 
         resp = await self.session.post(
             # inline query: niquests drops `params` on custom SSE schemes
-            self._sse_url(f"/models/{self.model}:streamGenerateContent?alt=sse"),
+            self._sse_url(f"/models/{_model}:streamGenerateContent?alt=sse"),
             json=payload,
         )
         _check_resp_status(resp)
