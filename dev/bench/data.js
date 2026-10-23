@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792783821554,
+  "lastUpdate": 1792783831947,
   "repoUrl": "https://github.com/polarsen-io/padwan-ai",
   "entries": {
     "Import Performance": [
@@ -4248,6 +4248,66 @@ window.BENCHMARK_DATA = {
             "value": 245.43,
             "unit": "ms",
             "range": 13.3
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "julien.brayere@obitrain.com",
+            "name": "Julien Brayere",
+            "username": "Andarius"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b17ffd9b8e7619d4e05c1e223da95fb877053a0e",
+          "message": "feat: add Gemini translation for Anthropic messages (#91)\n\n* feat: add Gemini translation for Anthropic messages\n\n* fix: preserve Gemini compatibility tool calls and model routing\n\n* test(gemini-compat): ignore the inline ?alt=sse when matching the stream endpoint\n\n* fix(anthropic): report Gemini usage the way Anthropic counts it\n\ninput_tokens excludes cache reads (promptTokenCount includes them) and output_tokens includes thoughtsTokenCount, matching the OpenAI bridge and GeminiClient.complete.\n\n* fix(gemini): merge a body generationConfig with the client defaults in stream\n\nstream() used to replace the client's temperature and thinking config whenever the body carried a generationConfig; body keys now win key by key. complete() stays a raw pass-through: complete_chat and generate_speech build their own config, and speech models reject a thinkingConfig.\n\n* fix(anthropic): translate documents, tool-result media and errors to Gemini\n\nBase64 PDF/text documents become inlineData/text parts, tool_result images and documents follow the functionResponse run (as #112 does for OpenAI), and is_error results are sent as {\"error\": text} since the OpenAI bridge has no precedent to follow. Remaining drops log a warning.\n\n* fix(anthropic): omit thinking-only assistant turns in the Gemini translation\n\nA model turn left empty after dropping thinking blocks is skipped instead of sent as an empty text part.\n\n* fix(anthropic): map Gemini finish reasons explicitly\n\nMAX_TOKENS now wins over function calls. MALFORMED_FUNCTION_CALL, UNEXPECTED_TOOL_CALL and other unmapped reasons report end_turn with a log.warning (the OpenAI bridge has no analogue; it maps unknown reasons to end_turn). Image safety reasons map to refusal. STOP is not mapped to stop_sequence: Gemini does not report whether a stop sequence matched.\n\n* refactor(anthropic): type the Gemini bridge with its existing TypedDicts\n\nRequests build Content/GenerationConfig/StreamBody directly (no final cast), responses return MessagesResponse/AnthropicUsage and streams AnthropicEvent. The SDK GenerateContentResponseDict is snake_case while the wire is camelCase, so it is narrowed to a Mapping once at the boundary.\n\n* test(anthropic): fold the Gemini bridge tests into parametrized cases\n\nComplete and stream translations now share one block-level case table; single-case request, system and tool-ID tests join their siblings.\n\n* refactor(anthropic): share system-prompt flattening between the bridges\n\nUsage and tool-result encoding differ per backend (OpenAI tool messages take raw text, Gemini needs a JSON object), so only the system text helper is shared.\n\n* test(anthropic): e2e round trips for the Gemini bridge\n\n* fix(anthropic): send tool schemas to Gemini as parametersJsonSchema",
+          "timestamp": "2026-10-23T21:29:28+02:00",
+          "tree_id": "a5bc161648c7b5dc816542202ba1d087f75462fd",
+          "url": "https://github.com/polarsen-io/padwan-ai/commit/b17ffd9b8e7619d4e05c1e223da95fb877053a0e"
+        },
+        "date": 1792783830523,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "3.13 · padwan_ai (facade)",
+            "value": 247.37,
+            "unit": "ms",
+            "range": 2.61
+          },
+          {
+            "name": "3.13 · padwan_ai.openai",
+            "value": 246.07,
+            "unit": "ms",
+            "range": 2.94
+          },
+          {
+            "name": "3.13 · padwan_ai.otel",
+            "value": 269.24,
+            "unit": "ms",
+            "range": 2.85
+          },
+          {
+            "name": "3.15 · padwan_ai (facade)",
+            "value": 54.68,
+            "unit": "ms",
+            "range": 0.82
+          },
+          {
+            "name": "3.15 · padwan_ai.openai",
+            "value": 197.9,
+            "unit": "ms",
+            "range": 3.94
+          },
+          {
+            "name": "3.15 · padwan_ai.otel",
+            "value": 239.21,
+            "unit": "ms",
+            "range": 3.51
           }
         ]
       }
