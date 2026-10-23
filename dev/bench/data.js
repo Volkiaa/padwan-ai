@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792760963829,
+  "lastUpdate": 1792761100112,
   "repoUrl": "https://github.com/polarsen-io/padwan-ai",
   "entries": {
     "Import Performance": [
@@ -3648,6 +3648,66 @@ window.BENCHMARK_DATA = {
             "value": 233.91,
             "unit": "ms",
             "range": 2.39
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "julien.brayere@obitrain.com",
+            "name": "Julien Brayere",
+            "username": "Andarius"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "a94e07057116af350bea4de115ef642f16816bf4",
+          "message": "fix: cap the Retry-After wait before a 429 is raised (#130)\n\nurllib3 slept the full Retry-After of a 429 or 503 (a gateway token bucket\nanswered with its refill time, up to 21 min) before the client ever saw it.\nEvery client Retry now caps that sleep at 30 s; the TooManyRequestsError\nkeeps the server's real retry_delay.",
+          "timestamp": "2026-10-23T15:10:48+02:00",
+          "tree_id": "f9587faee330ec24e441b778e39e3d3552012c50",
+          "url": "https://github.com/polarsen-io/padwan-ai/commit/a94e07057116af350bea4de115ef642f16816bf4"
+        },
+        "date": 1792761099209,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "3.13 · padwan_ai (facade)",
+            "value": 227.52,
+            "unit": "ms",
+            "range": 3.6
+          },
+          {
+            "name": "3.13 · padwan_ai.openai",
+            "value": 224.35,
+            "unit": "ms",
+            "range": 1.64
+          },
+          {
+            "name": "3.13 · padwan_ai.otel",
+            "value": 243.17,
+            "unit": "ms",
+            "range": 4.88
+          },
+          {
+            "name": "3.15 · padwan_ai (facade)",
+            "value": 53.81,
+            "unit": "ms",
+            "range": 2.89
+          },
+          {
+            "name": "3.15 · padwan_ai.openai",
+            "value": 195.52,
+            "unit": "ms",
+            "range": 2.82
+          },
+          {
+            "name": "3.15 · padwan_ai.otel",
+            "value": 227.53,
+            "unit": "ms",
+            "range": 3.2
           }
         ]
       }
