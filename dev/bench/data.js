@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792761100112,
+  "lastUpdate": 1792761670487,
   "repoUrl": "https://github.com/polarsen-io/padwan-ai",
   "entries": {
     "Import Performance": [
@@ -3708,6 +3708,66 @@ window.BENCHMARK_DATA = {
             "value": 227.53,
             "unit": "ms",
             "range": 3.2
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "julien.brayere@obitrain.com",
+            "name": "Julien Brayere",
+            "username": "Andarius"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "49d187567cc663638515ec098b9aa667c643c196",
+          "message": "fix(mcp): open the notification GET stream without a read timeout (#131)\n\n* fix(mcp): open the notification GET stream without a read timeout\n\nThe listener inherited niquests' 30 s default read timeout, so a quiet streamable-HTTP server timed the GET out every ~33 s, each logged as a listener error with a ReadTimeout trace and reconnected.\n\n* test(mcp): assert the listener read timeout in the existing reconnect test",
+          "timestamp": "2026-10-23T15:20:08+02:00",
+          "tree_id": "fd6026ff11b233e115942bdf2a8ce461f5044a77",
+          "url": "https://github.com/polarsen-io/padwan-ai/commit/49d187567cc663638515ec098b9aa667c643c196"
+        },
+        "date": 1792761667864,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "3.13 · padwan_ai (facade)",
+            "value": 226.7,
+            "unit": "ms",
+            "range": 1.48
+          },
+          {
+            "name": "3.13 · padwan_ai.openai",
+            "value": 226.79,
+            "unit": "ms",
+            "range": 2.5
+          },
+          {
+            "name": "3.13 · padwan_ai.otel",
+            "value": 241.81,
+            "unit": "ms",
+            "range": 2.15
+          },
+          {
+            "name": "3.15 · padwan_ai (facade)",
+            "value": 52.02,
+            "unit": "ms",
+            "range": 0.7
+          },
+          {
+            "name": "3.15 · padwan_ai.openai",
+            "value": 188.19,
+            "unit": "ms",
+            "range": 2.36
+          },
+          {
+            "name": "3.15 · padwan_ai.otel",
+            "value": 226.04,
+            "unit": "ms",
+            "range": 3.81
           }
         ]
       }
