@@ -625,7 +625,9 @@ without running an HTTP server.</p>
 <p data-pr-diff="added">The converted <code>model</code> selects the client endpoint and is removed from the
 HTTP body. An explicit <code>complete(..., model=...)</code> or <code>stream(..., model=...)</code>
 argument takes precedence.</p>
-<p data-pr-diff="added">Keep returned tool IDs unchanged when replaying assistant calls and user
+<p data-pr-diff="added">Tool <code>input_schema</code>s are sent as <code>parametersJsonSchema</code>, so JSON Schema keywords
+Gemini's OpenAPI-style <code>parameters</code> lacks (<code>$schema</code>, <code>additionalProperties</code>,
+<code>$ref</code>) pass through untouched. Keep returned tool IDs unchanged when replaying assistant calls and user
 results: signed Gemini function calls carry their signatures in those opaque
 IDs. Parallel results stay together in one user turn; unmatched results raise
 <code>ValueError</code>. Anthropic thinking blocks and thinking configuration are not
