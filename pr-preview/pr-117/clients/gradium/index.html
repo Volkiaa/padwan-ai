@@ -5,7 +5,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1" name="viewport"/>
-<meta content="Lightweight async client for OpenAI, Gemini, Mistral, Grok, Anthropic, TypeSafe (JEV, experimental), and any OpenAI-compatible API" name="description"/>
+<meta content="Lightweight async client for OpenAI, Gemini, Mistral, Grok, Anthropic, ElevenLabs (experimental), Gradium (experimental), TypeSafe (JEV, experimental), and any OpenAI-compatible API" name="description"/>
 <link href="https://polarsen-io.github.io/padwan-ai/clients/gradium/" rel="canonical"/>
 <link href="../elevenlabs/" rel="prev"/>
 <link href="../typesafe/" rel="next"/>
@@ -296,7 +296,7 @@ html:not(.pr-diff-off) :is(.admonition, .tabbed-set, .highlight)[data-pr-diff] {
 <span class="md-ellipsis">
     
   
-  ElevenLabs
+  ElevenLabs (experimental)
 
     
   </span>
@@ -308,7 +308,7 @@ html:not(.pr-diff-off) :is(.admonition, .tabbed-set, .highlight)[data-pr-diff] {
 <span class="md-ellipsis">
     
   
-  Gradium
+  Gradium (experimental)
 
     
   </span>
@@ -319,7 +319,7 @@ html:not(.pr-diff-off) :is(.admonition, .tabbed-set, .highlight)[data-pr-diff] {
 <span class="md-ellipsis">
     
   
-  Gradium
+  Gradium (experimental)
 
     
   </span>
@@ -430,6 +430,10 @@ html:not(.pr-diff-off) :is(.admonition, .tabbed-set, .highlight)[data-pr-diff] {
 <div class="md-content" data-md-component="content">
 <article class="md-content__inner md-typeset"><div class="pr-diff-bar"><b>New page in this PR</b></div>
 <h1 id="gradium-client">Gradium Client</h1>
+<div class="admonition warning">
+<p class="admonition-title">Experimental</p>
+<p>The Gradium client is experimental: its interface and typed payloads may change between minor releases without a deprecation cycle.</p>
+</div>
 <p><a href="https://gradium.ai">Gradium</a> is a speech provider: low-latency text-to-speech and speech-to-text in English, French,
 German, Spanish and Portuguese. <code>GradiumClient</code> is standalone like the <a href="../elevenlabs/">ElevenLabs client</a>: it is not an
 <code>LLMClientBase</code> subclass and <code>LLMClient</code> does not route to it. It covers the REST endpoints; WebSocket streaming is not

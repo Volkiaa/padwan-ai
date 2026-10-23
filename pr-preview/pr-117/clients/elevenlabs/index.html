@@ -5,7 +5,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1" name="viewport"/>
-<meta content="Lightweight async client for OpenAI, Gemini, Mistral, Grok, Anthropic, TypeSafe (JEV, experimental), and any OpenAI-compatible API" name="description"/>
+<meta content="Lightweight async client for OpenAI, Gemini, Mistral, Grok, Anthropic, ElevenLabs (experimental), Gradium (experimental), TypeSafe (JEV, experimental), and any OpenAI-compatible API" name="description"/>
 <link href="https://polarsen-io.github.io/padwan-ai/clients/elevenlabs/" rel="canonical"/>
 <link href="../voyage/" rel="prev"/>
 <link href="../gradium/" rel="next"/>
@@ -296,7 +296,7 @@ html:not(.pr-diff-off) :is(.admonition, .tabbed-set, .highlight)[data-pr-diff] {
 <span class="md-ellipsis">
     
   
-  ElevenLabs
+  ElevenLabs (experimental)
 
     
   </span>
@@ -307,7 +307,7 @@ html:not(.pr-diff-off) :is(.admonition, .tabbed-set, .highlight)[data-pr-diff] {
 <span class="md-ellipsis">
     
   
-  ElevenLabs
+  ElevenLabs (experimental)
 
     
   </span>
@@ -363,7 +363,7 @@ html:not(.pr-diff-off) :is(.admonition, .tabbed-set, .highlight)[data-pr-diff] {
 <span class="md-ellipsis">
     
   
-  Gradium
+  Gradium (experimental)
 
     
   </span>
@@ -439,6 +439,10 @@ html:not(.pr-diff-off) :is(.admonition, .tabbed-set, .highlight)[data-pr-diff] {
 <div class="md-content" data-md-component="content">
 <article class="md-content__inner md-typeset"><div class="pr-diff-bar"><b>New page in this PR</b></div>
 <h1 id="elevenlabs-client">ElevenLabs Client</h1>
+<div class="admonition warning">
+<p class="admonition-title">Experimental</p>
+<p>The ElevenLabs client is experimental: its interface and typed payloads may change between minor releases without a deprecation cycle.</p>
+</div>
 <p>ElevenLabs is a speech provider: text-to-speech and speech-to-text, no chat models. <code>ElevenLabsClient</code> is experimental
 and standalone, like the <a href="../typesafe/">TypeSafe client</a>: it is not an <code>LLMClientBase</code> subclass, <code>LLMClient</code> does not
 route to it, and the OpenTelemetry instrumentation does not cover it.</p>
