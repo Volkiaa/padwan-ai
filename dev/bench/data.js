@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792769521243,
+  "lastUpdate": 1792769805686,
   "repoUrl": "https://github.com/polarsen-io/padwan-ai",
   "entries": {
     "Import Performance": [
@@ -4068,6 +4068,66 @@ window.BENCHMARK_DATA = {
             "value": 246.25,
             "unit": "ms",
             "range": 8.71
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "julien.brayere@obitrain.com",
+            "name": "Julien Brayere",
+            "username": "Andarius"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "838b860fc22bac7b9ec19f877643ff828773f279",
+          "message": "feat(elevenlabs): add streaming, realtime, speech-to-speech, voices, sound effects and music (#118)\n\n* feat(elevenlabs): add streaming, realtime, speech-to-speech, voices, sound effects and music\n\nStreaming TTS and speech-to-speech over REST, WebSocket TTS (stream-input) and\nrealtime Scribe STT clients, voice management, sound effects and music.\nMark the ElevenLabs client as experimental and check speech-to-speech models in\nthe weekly drift report.\n\n* fix(elevenlabs): harden stream lifecycles and rename ElevenLabsAudio\n\nAdd WsConnection.pump: the sender task is always cancelled and awaited, send\nerrors propagate, and a server close before the final message raises instead\nof hanging on a pending input source. Close nested streams promptly with\naclosing. Rename ElevenLabsSpeech to ElevenLabsAudio (also returned for sound\neffects and music) and register elevenlabs as an otel provider name.\n\n* fix(elevenlabs): reuse the standalone status checks, map realtime throttling, chain pump errors\n\n- HTTP and stream status checks come from StandaloneClientMixin (429 via retry_after_delay, 5xx-only retries)\n- realtime rate_limited/commit_throttled/queue_overflow frames raise TooManyRequestsError; is_committed accepts the\n  timestamped variant; the session_started wait has a deadline (WsConnection.wait_for)\n- pump reports the send failure when the reader then dies on the closed socket\n- scribe_v2_realtime gets its own Literal; transcribe takes file= keyword-only, language=, filename=/content_type=\n- voice cloning and music e2e tests are opt-in (-m 'e2e and paid'); matrices show realtime as supported",
+          "timestamp": "2026-10-23T17:35:50+02:00",
+          "tree_id": "cea88974ba45fbebde9b46148120c28a9e08ad62",
+          "url": "https://github.com/polarsen-io/padwan-ai/commit/838b860fc22bac7b9ec19f877643ff828773f279"
+        },
+        "date": 1792769804564,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "3.13 · padwan_ai (facade)",
+            "value": 234.68,
+            "unit": "ms",
+            "range": 3.34
+          },
+          {
+            "name": "3.13 · padwan_ai.openai",
+            "value": 235.51,
+            "unit": "ms",
+            "range": 6.04
+          },
+          {
+            "name": "3.13 · padwan_ai.otel",
+            "value": 248.46,
+            "unit": "ms",
+            "range": 4.4
+          },
+          {
+            "name": "3.15 · padwan_ai (facade)",
+            "value": 55.81,
+            "unit": "ms",
+            "range": 2.62
+          },
+          {
+            "name": "3.15 · padwan_ai.openai",
+            "value": 215.38,
+            "unit": "ms",
+            "range": 9.88
+          },
+          {
+            "name": "3.15 · padwan_ai.otel",
+            "value": 254.93,
+            "unit": "ms",
+            "range": 6.93
           }
         ]
       }
