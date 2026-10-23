@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792763007333,
+  "lastUpdate": 1792767161372,
   "repoUrl": "https://github.com/polarsen-io/padwan-ai",
   "entries": {
     "Import Performance": [
@@ -3948,6 +3948,66 @@ window.BENCHMARK_DATA = {
             "value": 228.69,
             "unit": "ms",
             "range": 1.68
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "julien.brayere@obitrain.com",
+            "name": "Julien Brayere",
+            "username": "Andarius"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fa6f5b1f772e07130a416d0865a06b7a65c8a05e",
+          "message": "feat(elevenlabs): add ElevenLabs text-to-speech and speech-to-text client (#116)\n\n* feat(elevenlabs): add ElevenLabs text-to-speech and speech-to-text client\n\nStandalone ElevenLabsClient with generate_speech and transcribe (Scribe).\nShare the session lifecycle with TypeSafeClient via StandaloneClientMixin and\nnon-blocking audio file reads via _read_audio (also used by Mistral transcribe).\nCross-check request/response types against the elevenlabs SDK and add an\nElevenLabs TTS section to the weekly model drift check.\n\n* ci(e2e): pass ELEVENLABS_API_KEY to the e2e job\n\n* fix(elevenlabs): share the standalone status check and retry policy, align transcribe with the other clients\n\n- 429 maps through retry_after_delay (HTTP dates, non-JSON bodies) via StandaloneClientMixin._check_resp_status\n- retry connection errors and 5xx only, as the chat clients do; a 429 is raised, not retried\n- transcribe: keyword-only file=, language= (not language_code=), filename=/content_type= passthrough\n- model parameters keep their Literal types; docs mark the client experimental",
+          "timestamp": "2026-10-23T16:51:35+02:00",
+          "tree_id": "559b9a91b940bf6f1ef88190ecadbf4ec0401f4f",
+          "url": "https://github.com/polarsen-io/padwan-ai/commit/fa6f5b1f772e07130a416d0865a06b7a65c8a05e"
+        },
+        "date": 1792767159990,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "3.13 · padwan_ai (facade)",
+            "value": 221.8,
+            "unit": "ms",
+            "range": 4.28
+          },
+          {
+            "name": "3.13 · padwan_ai.openai",
+            "value": 221.35,
+            "unit": "ms",
+            "range": 0.99
+          },
+          {
+            "name": "3.13 · padwan_ai.otel",
+            "value": 236.62,
+            "unit": "ms",
+            "range": 0.92
+          },
+          {
+            "name": "3.15 · padwan_ai (facade)",
+            "value": 52.89,
+            "unit": "ms",
+            "range": 0.55
+          },
+          {
+            "name": "3.15 · padwan_ai.openai",
+            "value": 190.46,
+            "unit": "ms",
+            "range": 1.21
+          },
+          {
+            "name": "3.15 · padwan_ai.otel",
+            "value": 228.76,
+            "unit": "ms",
+            "range": 1.17
           }
         ]
       }
