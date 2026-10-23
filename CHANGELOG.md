@@ -1,3 +1,24 @@
+## 0.16.0 (2026-10-23)
+
+Two speech providers join (ElevenLabs and Gradium, both experimental), Anthropic Messages can be served over Gemini, and the chat clients stop upgrading to HTTP/3.
+
+### Features
+
+- **ElevenLabs** (experimental): `ElevenLabsClient` covers text-to-speech (`generate_speech`, `stream_speech`), speech-to-text (`transcribe`, with word timestamps and diarization), speech-to-speech in full and streamed form, sound effects, music composition and the voice library (list, get, clone, delete). `ElevenLabsRealtimeTTSClient` and `ElevenLabsRealtimeSTTClient` stream over WebSocket (needs the `realtime` extra). Standalone like TypeSafe: not routed by `LLMClient`. (#116, #118)
+- **Gradium** (experimental): `GradiumClient` covers text-to-speech and speech-to-text over REST, their WebSocket streaming and realtime forms, speech-to-speech translation and voice management. (#117, #119)
+- **Anthropic Messages over Gemini**: `padwan_ai.anthropic.gemini_compat` translates Messages requests to Gemini (`messages_to_gemini`) and Gemini responses and streams back to Anthropic shape (`gemini_response_to_anthropic`, `gemini_stream_to_anthropic`), like the OpenAI bridge. Tool schemas are sent as `parametersJsonSchema`, so JSON Schema keywords such as `$schema` pass through; signed function-call IDs round-trip when replayed unchanged; images and PDF documents become `inlineData`. (#91)
+- **OpenAI transcription `extra_params`**: `transcribe(extra_params=...)` adds provider-only form fields (e.g. a gateway's `metadata`), as a mapping or as pairs to repeat a field (`timestamp_granularities[]`). A key that names an argument of `transcribe` raises `ValueError`. (#129, #135)
+
+### Fixes
+
+- **Retry-After cap**: an in-session retry on a 429 or 503 sleeps at most `RETRY_AFTER_MAX` (30 s) per attempt, whatever the header says; `TooManyRequestsError.retry_delay` still carries the server's full value. Applies to every client. (#130)
+- **MCP listener**: the notification GET stream is opened without a read timeout, so a quiet server no longer counts as a listener failure every 30 s. (#131)
+- **HTTP/2 only**: the chat clients create their session with `disable_http3=True`. Large request bodies on a reused HTTP/3 connection trip a QUIC flow-control error or stall in urllib3-future (jawah/urllib3.future#440). (#137)
+
+### Docs and tooling
+
+- Docs PRs get a preview on GitHub Pages with changed blocks highlighted and a sidebar marker (#132, #133); the validator tabs on the Agents page carry the msgspec and pydantic logos (#136); AGENTS.md asks for new cases as rows of the existing parametrized test (#134); CI no longer installs the research group (#128).
+
 ## 0.15.0 (2026-10-20)
 
 OpenAI gains speech-to-text, a raw SSE relay for chat completions and per-request headers; a 429 now always maps to `TooManyRequestsError`.
