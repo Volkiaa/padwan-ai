@@ -60,6 +60,17 @@ def test_parse_retry_delay(delay_str: str, expected: int):
     [
         pytest.param(200, {"candidates": []}, nullcontext(), id="success"),
         pytest.param(
+            402,
+            {
+                "error": {
+                    "code": 402,
+                    "message": "Your prepayment credits are depleted.",
+                }
+            },
+            pytest.raises(QuotaExceededError),
+            id="402-credits-depleted",
+        ),
+        pytest.param(
             429,
             {
                 "error": {

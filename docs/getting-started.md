@@ -60,7 +60,7 @@ Passing a model a provider has scheduled for retirement emits a one-time `ModelD
 
 ### Retries and rate limits
 
-Clients retry transient failures (connection errors, 5xx) with a short backoff. A 429 or 503 carrying `Retry-After` is retried in place only while that header stays under 30 seconds per attempt; once retries are spent, the request raises `TooManyRequestsError` whose `retry_delay` is the server's full `Retry-After`, so a long rate-limit window surfaces after a few capped waits instead of blocking the call for its whole duration.
+Clients retry transient failures (connection errors, 5xx) with a short backoff. A 429 or 503 carrying `Retry-After` is retried in place only while that header stays under 30 seconds per attempt; once retries are spent, the request raises `TooManyRequestsError` whose `retry_delay` is the server's full `Retry-After`, so a long rate-limit window surfaces after a few capped waits instead of blocking the call for its whole duration. An exhausted quota or depleted prepaid credit (OpenAI and Gemini answer 402, Gemini also a 429 with a quota failure) raises `QuotaExceededError`, which is not an `LLMError`: retrying cannot fix it.
 
 ### Environment Variables
 
