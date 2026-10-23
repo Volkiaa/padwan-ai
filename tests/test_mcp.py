@@ -577,7 +577,8 @@ class TestMcpStreamable:
                 assert "Authorization" not in headers
 
     async def test_listen_tracks_last_event_id(self, mock_http):
-        """_listen tracks event IDs and sends Last-Event-ID on reconnect."""
+        """_listen sends Last-Event-ID on reconnect and never sets a read timeout
+        (regression: the 30 s default counted every quiet spell as a failure)."""
         sse_event = _make_sse_event('{"method":"ping"}', event_id="evt-1")
         first_get = _make_sse_response([sse_event])
         second_get = AsyncMock()
@@ -604,6 +605,7 @@ class TestMcpStreamable:
             else {},
         )
         assert second_call_headers.get("Last-Event-ID") == "evt-1"
+        assert mock_http.get.call_args.kwargs["timeout"].read_timeout is None
 
     async def test_listen_respects_retry_field(self, mock_http):
         """_listen updates _retry_ms from SSE retry field."""
@@ -707,21 +709,6 @@ class TestMcpStreamable:
             pass  # _refresh_tools (called from __aenter__) drives _read_sse_response
         # No exception means the keep-alive was skipped before json().
         keepalive.json.assert_not_called()
-
-    async def test_listen_has_no_read_timeout(self, mock_http):
-        """The notification GET idles for minutes; a read timeout would count
-        every quiet spell as a listener failure (regression: 30 s default)."""
-        client = McpStreamable(url="https://example.com/mcp")
-        client._http = mock_http
-        self._setup_post_responses(
-            mock_http,
-            _make_response(_INIT_RESULT),
-            _make_response({}),
-            _make_response(_TOOLS_RESULT),
-        )
-        async with client:
-            await asyncio.sleep(0.05)
-        assert mock_http.get.call_args.kwargs["timeout"].read_timeout is None
 
     async def test_listen_stops_after_max_retries(self, mock_http, caplog):
         """_listen gives up after _MAX_LISTEN_RETRIES consecutive failures."""
