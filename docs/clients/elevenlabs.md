@@ -4,6 +4,9 @@ icon: lucide/audio-lines
 
 # ElevenLabs Client
 
+!!! warning "Experimental"
+    The ElevenLabs client is experimental: its interface and typed payloads may change between minor releases without a deprecation cycle.
+
 ElevenLabs is a speech provider: text-to-speech and speech-to-text, no chat models. `ElevenLabsClient` is experimental
 and standalone, like the [TypeSafe client](typesafe.md): it is not an `LLMClientBase` subclass, `LLMClient` does not
 route to it, and the OpenTelemetry instrumentation does not cover it.
