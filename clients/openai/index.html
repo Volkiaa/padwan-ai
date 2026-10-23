@@ -1052,7 +1052,7 @@ need <code>filename</code>.</p>
 </span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="p">)</span>
 </span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">"text"</span><span class="p">])</span>
 </span></code></pre></div>
-<p>It also accepts <code>content_type</code>, <code>temperature</code> and <code>headers=</code> (sent with that request only).</p>
+<p>It also accepts <code>content_type</code>, <code>temperature</code>, <code>headers=</code> (sent with that request only) and <code>extra_params</code>, form fields for provider-only parameters (e.g. a gateway's <code>metadata</code>, as a JSON string); pass pairs to repeat a field (e.g. <code>timestamp_granularities[]</code>).</p>
 <h2 id="batch-processing">Batch Processing</h2>
 <p>OpenAI supports batch processing via a file-based API. Requests are serialized to JSONL, uploaded, and results are retrieved as a file once the batch completes.</p>
 <h3 id="creating-a-batch">Creating a batch</h3>
