@@ -101,6 +101,7 @@ testpaths = ["tests"]
 addopts = "-v --cov=padwan_ai --cov-report=term-missing -m 'not e2e'"
 markers = [
     "e2e: end-to-end tests requiring real API keys",
+    "paid: e2e tests that spend provider credits or create resources (opt in with -m 'e2e and paid')",
     "otel_expect_error: test whose spans are expected to end in ERROR status under --otel",
 ]
 asyncio_mode = "auto"

@@ -65,7 +65,13 @@ from .conversation import (
     Message,
     ToolResultMessage,
 )
-from .elevenlabs import ELEVENLABS_MODELS, ElevenLabsClient, ElevenLabsModel
+from .elevenlabs import (
+    ELEVENLABS_MODELS,
+    ElevenLabsClient,
+    ElevenLabsModel,
+    ElevenLabsRealtimeSTTClient,
+    ElevenLabsRealtimeTTSClient,
+)
 from .embeddings import vectors
 from .errors import LLMError, OutputError, OutputFailure, Provider
 from .gemini import (
@@ -145,6 +151,8 @@ __all__ = (
     "ContentTextPart",
     "ElevenLabsClient",
     "ElevenLabsModel",
+    "ElevenLabsRealtimeSTTClient",
+    "ElevenLabsRealtimeTTSClient",
     "ConversationSnapshot",
     "ConversationState",
     "ConversationStore",

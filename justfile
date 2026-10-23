@@ -19,7 +19,7 @@ test-min *args:
 [group('dev')]
 [arg("full", long="full", value="true")]
 e2e env=".env" full="false" *args:
-    {{ if full == "true" { "just vllm-up && VLLM_BASE_URL=http://localhost:8100/v1 " } else { "" } }}uv run pytest tests/e2e/ -m e2e --env-file {{ env }} {{ args }}
+    {{ if full == "true" { "just vllm-up && VLLM_BASE_URL=http://localhost:8100/v1 " } else { "" } }}uv run pytest tests/e2e/ -m 'e2e and not paid' --env-file {{ env }} {{ args }}
 
 # Local observability stacks (OTel, Langfuse): just obs::<tab>
 mod obs "bin/observability"
