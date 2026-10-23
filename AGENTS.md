@@ -43,8 +43,9 @@ changes, run e2e with `--otel`: it fails on span attributes the docs don't name.
   (`data: BatchResponse = _check_resp(resp)`).
 - No `assert` for runtime checks. Provider/API failures raise from `padwan_ai/errors.py`; keep existing `ValueError`
   (bad arguments) and `RuntimeError` (lifecycle misuse) contracts.
-- Tests: `pytest.param(..., id="...")` for every parametrized case; mock HTTP in unit tests, real calls only under
-  `tests/e2e/` with `@pytest.mark.e2e`.
+- Tests: `pytest.param(..., id="...")` for every parametrized case; a new case of an existing behaviour is one more
+  row in that test's table, not a new test function; mock HTTP in unit tests, real calls only under `tests/e2e/`
+  with `@pytest.mark.e2e`.
 - Model `Literal`s (`OpenAIModel`, `GeminiModel`, ...) live in each provider's `client.py`; add stable aliases only,
   never dated snapshots, and don't remove IDs without a human-reviewed deprecation.
 - A weekly refresh (`.github/workflows/model-drift.yml`, Mondays 09:00 UTC, `bin/drift/refresh-llms.sh`) bumps the
