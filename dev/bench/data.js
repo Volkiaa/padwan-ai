@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1792767161372,
+  "lastUpdate": 1792769521243,
   "repoUrl": "https://github.com/polarsen-io/padwan-ai",
   "entries": {
     "Import Performance": [
@@ -4008,6 +4008,66 @@ window.BENCHMARK_DATA = {
             "value": 228.76,
             "unit": "ms",
             "range": 1.17
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "julien.brayere@obitrain.com",
+            "name": "Julien Brayere",
+            "username": "Andarius"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": false,
+          "id": "0d88082b5c707cc58e05ae9bc707066b0a0c7089",
+          "message": "feat(gradium): add Gradium text-to-speech and speech-to-text client (#117)\n\n* feat(gradium): add Gradium text-to-speech and speech-to-text client\n\nStandalone GradiumClient on StandaloneClientMixin: generate_speech over the TTS\nREST endpoint and transcribe over the ASR endpoint (NDJSON folded into segments).\nRequest fields are cross-checked against the gradium SDK.\n\n* ci(e2e): pass GRADIUM_API_KEY to the e2e job\n\n* fix(gradium): send json_config as a JSON string, map 429, reuse the standalone status check\n\nThe API and its SDK take TTS json_config as a string; a dict was rejected or ignored.\ntranscribe takes file= keyword-only like the other clients; malformed NDJSON raises LLMError.\n\n* docs: label the ElevenLabs and Gradium clients experimental like TypeSafe",
+          "timestamp": "2026-10-23T17:31:10+02:00",
+          "tree_id": "3e9c382e00bddbfcca499ba40c4aee87e4b7cdfc",
+          "url": "https://github.com/polarsen-io/padwan-ai/commit/0d88082b5c707cc58e05ae9bc707066b0a0c7089"
+        },
+        "date": 1792769520244,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "3.13 · padwan_ai (facade)",
+            "value": 235.14,
+            "unit": "ms",
+            "range": 9.87
+          },
+          {
+            "name": "3.13 · padwan_ai.openai",
+            "value": 226.38,
+            "unit": "ms",
+            "range": 4.08
+          },
+          {
+            "name": "3.13 · padwan_ai.otel",
+            "value": 238.25,
+            "unit": "ms",
+            "range": 7.62
+          },
+          {
+            "name": "3.15 · padwan_ai (facade)",
+            "value": 54.32,
+            "unit": "ms",
+            "range": 2.2
+          },
+          {
+            "name": "3.15 · padwan_ai.openai",
+            "value": 200.56,
+            "unit": "ms",
+            "range": 6.63
+          },
+          {
+            "name": "3.15 · padwan_ai.otel",
+            "value": 246.25,
+            "unit": "ms",
+            "range": 8.71
           }
         ]
       }
