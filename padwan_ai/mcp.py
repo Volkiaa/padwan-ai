@@ -22,6 +22,7 @@ from typing import (
 from urllib.parse import urlparse
 
 import niquests
+from urllib3 import Timeout
 
 from ._base import to_sse_url as _to_sse_url
 from ._json import dumps as _json_dumps, loads as _json_loads
@@ -45,6 +46,8 @@ _JSONRPC = "2.0"
 _PROTOCOL_VERSION = "2025-11-25"
 _MAX_LISTEN_RETRIES = 5
 _DEFAULT_RETRY_MS = 3_000
+# no read timeout: the notification stream idles by design
+_LISTEN_TIMEOUT = Timeout(connect=30, read=None)
 _CANCEL_TIMEOUT_S = 1.0
 
 
@@ -504,7 +507,9 @@ class McpStreamable:
                 headers = self._headers(accept="text/event-stream")
                 if self._last_event_id is not None:
                     headers["Last-Event-ID"] = self._last_event_id
-                r = await self._http.get(self._sse_url, headers=headers)
+                r = await self._http.get(
+                    self._sse_url, headers=headers, timeout=_LISTEN_TIMEOUT
+                )
                 if r.status_code == HTTPStatus.METHOD_NOT_ALLOWED:
                     return
                 ext = (r.raise_for_status()).extension

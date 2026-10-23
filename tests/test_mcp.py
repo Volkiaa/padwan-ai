@@ -577,7 +577,8 @@ class TestMcpStreamable:
                 assert "Authorization" not in headers
 
     async def test_listen_tracks_last_event_id(self, mock_http):
-        """_listen tracks event IDs and sends Last-Event-ID on reconnect."""
+        """_listen sends Last-Event-ID on reconnect and never sets a read timeout
+        (regression: the 30 s default counted every quiet spell as a failure)."""
         sse_event = _make_sse_event('{"method":"ping"}', event_id="evt-1")
         first_get = _make_sse_response([sse_event])
         second_get = AsyncMock()
@@ -604,6 +605,7 @@ class TestMcpStreamable:
             else {},
         )
         assert second_call_headers.get("Last-Event-ID") == "evt-1"
+        assert mock_http.get.call_args.kwargs["timeout"].read_timeout is None
 
     async def test_listen_respects_retry_field(self, mock_http):
         """_listen updates _retry_ms from SSE retry field."""
