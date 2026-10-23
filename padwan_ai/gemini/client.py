@@ -145,6 +145,8 @@ def _raise_error_from_resp(
 ) -> typing.Never:
     """Raise the appropriate error given parsed response data."""
     error = cast("GoogleRpcStatusDict", data.get("error", {}))
+    if resp.status_code == HTTPStatus.PAYMENT_REQUIRED:  # prepaid credits depleted
+        raise QuotaExceededError(body=data)
     if resp.status_code == HTTPStatus.TOO_MANY_REQUESTS:
         retry_delay: int | None = None
         for detail in error.get("details") or []:
