@@ -209,22 +209,6 @@ def _extract_text(result: Any) -> str:
     return _json_dumps(result)
 
 
-def _json_type_name(value: Any) -> str:
-    if value is None:
-        return "null"
-    if isinstance(value, bool):
-        return "boolean"
-    if isinstance(value, dict):
-        return "object"
-    if isinstance(value, str):
-        return "string"
-    if isinstance(value, (int, float)):
-        return "number"
-    if isinstance(value, list):
-        return "list"
-    return type(value).__name__
-
-
 StopReason = Literal["answer", "empty", "round_limit"]
 """How the last `stream()` / `send()` / `run()` ended: a text answer or an
 accepted `submit` (``answer``), a round with neither text nor tool calls
@@ -615,15 +599,13 @@ class AgentSession[T: Answer = Answer]:
                 if isinstance(parsed, dict):
                     args = parsed
                 else:
+                    kind = type(parsed).__name__
                     log.warning(
                         "Bad tool args for %r: expected a JSON object, got %s",
                         name,
-                        _json_type_name(parsed),
+                        kind,
                     )
-                    args = (
-                        f"arguments must be a JSON object, got "
-                        f"{_json_type_name(parsed)}"
-                    )
+                    args = f"arguments must be a JSON object, got {kind}"
             tool = dispatch.get(name)
             # a rejected call never reaches the hook: it only ever sees objects
             approved = (
